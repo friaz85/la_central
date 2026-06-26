@@ -26,7 +26,9 @@ define('TAECEL_NIP', 'f82dc3d9102a7591fd37a5593dc5ab17T44ui7Pib2');
 define('TAECEL_API_URL', 'https://taecel.com/app/api/');
 
 // Configuración de la App
-define('APP_URL', (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']));
+$host = $_SERVER['HTTP_HOST'] ?? 'clasicoslafe.qrewards.com.mx';
+$proto = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
+define('APP_URL', $proto . '://' . $host . '/backend');
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
 define('ADMIN_USERS', [
     'admin' => '$2y$10$6m2rOEvn.f67K.yK5pQ89.z8/J6P8/hJ9sF0B3N.v5m1c2N5v5m1c', // Se verifica con password_verify en login.php

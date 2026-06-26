@@ -701,7 +701,7 @@ export class AdminRegistrosComponent implements OnInit {
 
   openApprovalModal(reg: Registro) {
     this.approvalTarget.set(reg);
-    const rawPhone = reg.Celular || '';
+    const rawPhone = reg.TelefonoRecarga || reg.Celular || '';
     this.approvalPhone = rawPhone.replace(/\D/g, '').slice(-10);
   }
 

@@ -66,7 +66,7 @@ if (!$inbound) {
 $celular = $inbound['from'] ?? '';
 $msgId   = $inbound['id'] ?? '';
 $msgType = $inbound['type'] ?? 'text';
-$userName = $inbound['customer']['name'] ?? 'Participante';
+$userName = $inbound['customerProfile']['name'] ?? $inbound['customer']['name'] ?? 'Participante';
 
 if (empty($celular)) {
     exit;
@@ -91,6 +91,12 @@ try {
             'TerminosAceptados' => 0,
             'CodigoParticipacion' => null
         ];
+    } else {
+        // Si el usuario existe pero no tiene nombre guardado o tiene el default, y ahora tenemos un nombre real
+        if (($usuario['Nombre'] === null || $usuario['Nombre'] === '' || $usuario['Nombre'] === 'Participante') && $userName !== 'Participante') {
+            DB::execute("UPDATE tblUsuario SET Nombre = ? WHERE idUsuario = ?", [$userName, $usuario['idUsuario']]);
+            $usuario['Nombre'] = $userName;
+        }
     }
 
     // Permitir reiniciar el bot si el usuario escribe 'hola'
@@ -248,10 +254,9 @@ try {
                     $bodyList = "✅ ¡Foto recibida!\n\nPor favor, selecciona tu compañía telefónica para poder procesar tu recarga de Tiempo Aire cuando tu registro sea validado:";
                     $rowsList = [
                         ['id' => 'tel_1', 'title' => 'Telcel'],
-                        ['id' => 'tel_2', 'title' => 'Movistar'],
-                        ['id' => 'tel_3', 'title' => 'AT&T'],
-                        ['id' => 'tel_4', 'title' => 'Bait'],
-                        ['id' => 'tel_6', 'title' => 'Unefon'],
+                        ['id' => 'tel_2', 'title' => 'AT&T'],
+                        ['id' => 'tel_3', 'title' => 'Unefon'],
+                        ['id' => 'tel_4', 'title' => 'Movistar'],
                         ['id' => 'tel_5', 'title' => 'Virgin Mobile']
                     ];
 
@@ -295,10 +300,9 @@ try {
             $bodyList = "Por favor, utiliza el botón de abajo para seleccionar tu compañía telefónica. Esto es necesario para poder recargar tu celular:";
             $rowsList = [
                 ['id' => 'tel_1', 'title' => 'Telcel'],
-                ['id' => 'tel_2', 'title' => 'Movistar'],
-                ['id' => 'tel_3', 'title' => 'AT&T'],
-                ['id' => 'tel_4', 'title' => 'Bait'],
-                ['id' => 'tel_6', 'title' => 'Unefon'],
+                ['id' => 'tel_2', 'title' => 'AT&T'],
+                ['id' => 'tel_3', 'title' => 'Unefon'],
+                ['id' => 'tel_4', 'title' => 'Movistar'],
                 ['id' => 'tel_5', 'title' => 'Virgin Mobile']
             ];
             $wa->sendList($celular, $bodyList, "Ver Compañías", $rowsList, "Compañía Telefónica");
