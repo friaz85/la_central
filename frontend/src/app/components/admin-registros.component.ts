@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -81,7 +81,7 @@ interface Registro {
           </div>
 
           <div class="table-wrapper">
-            <table *ngIf="registros().length > 0; else noData">
+            <table *ngIf="pendingRegistros().length > 0; else noData">
               <thead>
                 <tr>
                   <th>Usuario / Celular</th>
@@ -94,7 +94,7 @@ interface Registro {
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let reg of registros()">
+                <tr *ngFor="let reg of pendingRegistros()">
                   <td>
                     <div class="user-cell">
                       <span class="name">{{ reg.NombreUsuario || 'Participante' }}</span>
@@ -621,6 +621,7 @@ export class AdminRegistrosComponent implements OnInit {
   private router = inject(Router);
 
   registros = signal<Registro[]>([]);
+  pendingRegistros = computed(() => this.registros().filter(r => r.Estatus === 1));
   loading = signal(false);
   
   stats = signal({
