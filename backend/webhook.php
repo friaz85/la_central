@@ -96,6 +96,18 @@ try {
     // Permitir reiniciar el bot si el usuario escribe 'hola'
     $bodyText = strtolower(trim($inbound['text']['body'] ?? ''));
     if ($bodyText === 'hola') {
+        // Verificar límite de 2 participaciones válidas (Estatus 1, 2, 4, 5)
+        $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
+        $participaciones = (int)($rowRegs['total'] ?? 0);
+
+        if ($participaciones >= 2) {
+            $body = "¡Hola! Te informamos que ya has alcanzado el límite máximo de *2 participaciones* permitidas en esta promoción. 📱\n\n"
+                  . "Si tus registros anteriores están en proceso, en breve te daremos respuesta. ¡Muchas gracias por participar! 🙏";
+            $wa->sendText($celular, $body);
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            exit;
+        }
+
         DB::execute("UPDATE tblUsuario SET PasoBot = 'BIENVENIDA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
         $usuario['PasoBot'] = 'BIENVENIDA';
     }
@@ -323,10 +335,21 @@ try {
                     [$textBody, $ultimoRegistro['idRegistro']]
                 );
 
-                $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$textBody}* para tu recarga. 📱\n\n"
-                      . "Tu registro pasará a validación... 🔍\n"
-                      . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n"
-                      . "¡Gracias por tu paciencia! 🙏";
+                // Obtener total de participaciones para ver si puede hacer otra
+                $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
+                $participaciones = (int)($rowRegs['total'] ?? 0);
+
+                if ($participaciones >= 2) {
+                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$textBody}* para tu recarga. 📱\n\n"
+                          . "Tu registro pasará a validación... 🔍\n"
+                          . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n"
+                          . "¡Muchas gracias por participar! 🙏";
+                } else {
+                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$textBody}* para tu recarga. 📱\n\n"
+                          . "Tu registro pasará a validación... 🔍\n"
+                          . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n\n"
+                          . "Recuerda que puedes registrar hasta *2 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola* en cualquier momento. ¡Gracias por participar! 🙏";
+                }
 
                 $wa->sendText($celular, $body);
                 DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
@@ -341,8 +364,17 @@ try {
         }
     }
     elseif ($pasoActual === 'COMPLETADO') {
-        // El usuario ya completó el registro
-        $body = "Tu registro está en proceso de validación. 🔍 En un lapso máximo de 48hrs hábiles te daremos respuesta aquí mismo. ¡Gracias por participar! 🙏";
+        // Verificar cuántos registros válidos tiene
+        $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
+        $participaciones = (int)($rowRegs['total'] ?? 0);
+
+        if ($participaciones >= 2) {
+            $body = "Ya has alcanzado el límite máximo de *2 participaciones* permitidas en esta promoción. 📱\n\n"
+                  . "Si tus registros anteriores están en proceso, en breve te daremos respuesta. ¡Muchas gracias por participar! 🙏";
+        } else {
+            $body = "Tu registro está en proceso de validación. 🔍 En un lapso máximo de 48hrs hábiles te daremos respuesta aquí mismo.\n\n"
+                  . "Recuerda que puedes registrar hasta *2 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola*. ¡Gracias por participar! 🙏";
+        }
         $wa->sendText($celular, $body);
     }
 
