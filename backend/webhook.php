@@ -132,7 +132,7 @@ try {
             DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1 WHERE idUsuario = ?", [$usuario['idUsuario']]);
 
             // Enviar video tutorial nativo por YCloud
-            $videoUrl = "https://clasicosdelafe.qrewards.com.mx/assets/video.mp4";
+            $videoUrl = "https://clasicoslafe.qrewards.com.mx/assets/video.mp4";
             $wa->sendVideo($celular, $videoUrl, "Video tutorial — Clásicos de la Fe");
 
             $body = "¡Perfecto, gracias por aceptar! 🙌\n"
