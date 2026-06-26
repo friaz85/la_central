@@ -14,12 +14,13 @@ try {
     echo "BD Error: " . $e->getMessage() . "\n\n";
 }
 
-echo "Probando llamada API YCloud...\n";
+echo "Probando llamada API YCloud (Video)...\n";
 try {
     $wa = new YCloudService();
-    // Enviar un mensaje de prueba al número configurado
-    $res = $wa->sendText(YCLOUD_FROM_PHONE, "Mensaje de prueba de conexión");
-    echo "YCloud API response: " . json_encode($res) . "\n\n";
+    $videoUrl = "https://clasicoslafe.qrewards.com.mx/assets/video.mp4";
+    $targetPhone = "+525540297872"; // Teléfono del usuario
+    $res = $wa->sendVideo($targetPhone, $videoUrl, "Video de prueba");
+    echo "YCloud API response (Video): " . json_encode($res) . "\n\n";
 } catch (Exception $e) {
-    echo "YCloud API error: " . $e->getMessage() . "\n\n";
+    echo "YCloud API error (Video): " . $e->getMessage() . "\n\n";
 }

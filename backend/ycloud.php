@@ -290,11 +290,14 @@ class YCloudService
      */
     private function request(array $payload): array
     {
+        $payloadJson = json_encode($payload);
+        error_log("YCloud API Request: " . $payloadJson);
+
         $ch = curl_init($this->apiUrl);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_POSTFIELDS     => $payloadJson,
             CURLOPT_TIMEOUT        => 15,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
@@ -313,9 +316,10 @@ class YCloudService
             return ['success' => false, 'error' => $error];
         }
 
+        error_log("YCloud API Response (HTTP {$httpCode}): " . $response);
+
         $decoded = json_decode($response, true);
         if ($httpCode >= 400) {
-            error_log("YCloud API error HTTP {$httpCode}. Response: {$response}");
             return ['success' => false, 'error' => $decoded['message'] ?? 'API Error', 'code' => $httpCode];
         }
 
