@@ -51,7 +51,7 @@ declare const Chart: any;
             <p class="number">{{ stats()?.cards?.total ?? '0' }}</p>
           </div>
           <div class="stat-card pending">
-            <h3>Pendientes</h3>
+            <h3>Por Validar</h3>
             <p class="number">{{ stats()?.cards?.pendientes ?? '0' }}</p>
           </div>
           <div class="stat-card approved">
@@ -408,10 +408,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   getStatusText(status: number): string {
     switch (status) {
       case 0: return 'Incompleto';
-      case 1: return 'Pendiente';
+      case 1: return 'Por validar';
       case 2: return 'Aprobado';
       case 3: return 'Rechazado';
-      case 4: return 'Recargado';
+      case 4: return 'Canjeado';
       case 5: return 'En Recarga';
       default: return 'Desconocido';
     }

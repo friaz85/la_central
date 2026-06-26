@@ -58,7 +58,7 @@ interface Registro {
             <p class="number">{{ stats().total }}</p>
           </div>
           <div class="stat-card pending">
-            <h3>Pendientes</h3>
+            <h3>Por Validar</h3>
             <p class="number">{{ stats().pending }}</p>
           </div>
           <div class="stat-card approved">
@@ -679,7 +679,7 @@ export class AdminRegistrosComponent implements OnInit {
 
   getStatusText(status: number): string {
     switch (status) {
-      case 1: return 'Pendiente';
+      case 1: return 'Por validar';
       case 2: return 'Aprobado';
       case 3: return 'Rechazado';
       case 4: return 'Canjeado';

@@ -237,13 +237,10 @@ try {
                 $savedFile = $wa->downloadMedia($mediaId, $filename);
 
                 if ($savedFile) {
-                    // Generar token único para el registro
-                    $tokenCanje = hash('sha256', $celular . time() . uniqid());
-
-                    // Guardar registro temporal con Estatus = 0 (incompleto, esperando telefonía)
+                    // Guardar temporalmente en tblUsuario (NO en tblRegistro todavía)
                     DB::execute(
-                        "INSERT INTO tblRegistro (idUsuario, Token, FotoCajas, CodigoUnico, Estatus) VALUES (?, ?, ?, ?, 0)",
-                        [$usuario['idUsuario'], $tokenCanje, $savedFile, $usuario['CodigoParticipacion']]
+                        "UPDATE tblUsuario SET TempFotoCajas = ? WHERE idUsuario = ?",
+                        [$savedFile, $usuario['idUsuario']]
                     );
 
                     // Enviar lista interactiva de compañías telefónicas
@@ -277,33 +274,21 @@ try {
         if ($msgType === 'interactive') {
             $selectedId = $inbound['interactive']['list_reply']['id'] ?? '';
         }
-
+ 
         if (strpos($selectedId, 'tel_') === 0) {
             $idTelefonia = (int)str_replace('tel_', '', $selectedId);
             
-            // Buscar el último registro incompleto del usuario para actualizarlo
-            $ultimoRegistro = DB::selectOne(
-                "SELECT idRegistro FROM tblRegistro WHERE idUsuario = ? AND Estatus = 0 ORDER BY FechaRegistro DESC LIMIT 1",
-                [$usuario['idUsuario']]
+            // Guardar temporalmente en tblUsuario (NO en tblRegistro todavía)
+            DB::execute(
+                "UPDATE tblUsuario SET TempIdTelefonia = ? WHERE idUsuario = ?",
+                [$idTelefonia, $usuario['idUsuario']]
             );
-
-            if ($ultimoRegistro) {
-                // Actualizar registro con la telefonía (mantiene Estatus = 0 temporalmente)
-                DB::execute(
-                    "UPDATE tblRegistro SET idTelefonia = ? WHERE idRegistro = ?",
-                    [$idTelefonia, $ultimoRegistro['idRegistro']]
-                );
-
-                $body = "¡Excelente elección! 📱\n\n"
-                      . "Ahora, por favor escribe el *número celular a 10 dígitos* al cual deseas que le realicemos la recarga telefónica:";
-
-                $wa->sendText($celular, $body);
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_TELEFONO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            } else {
-                // Si no hay registro temporal, mandar a FOTO_PENDIENTE
-                $wa->sendText($celular, "Ocurrió un inconveniente. Por favor, envía la foto nuevamente. 📸");
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            }
+ 
+            $body = "¡Excelente elección! 📱\n\n"
+                  . "Ahora, por favor escribe el *número celular a 10 dígitos* al cual deseas que le realicemos la recarga telefónica:";
+ 
+            $wa->sendText($celular, $body);
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_TELEFONO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
         } else {
             // No seleccionó de la lista, reenviar la lista
             $bodyList = "Por favor, utiliza el botón de abajo para seleccionar tu compañía telefónica. Esto es necesario para poder recargar tu celular:";
@@ -320,25 +305,39 @@ try {
     }
     elseif ($pasoActual === 'INGRESO_TELEFONO') {
         $textBody = preg_replace('/\D/', '', $inbound['text']['body'] ?? '');
-
+ 
         if (strlen($textBody) === 10) {
-            // Buscar el último registro incompleto del usuario
-            $ultimoRegistro = DB::selectOne(
-                "SELECT idRegistro FROM tblRegistro WHERE idUsuario = ? AND Estatus = 0 ORDER BY FechaRegistro DESC LIMIT 1",
-                [$usuario['idUsuario']]
-            );
-
-            if ($ultimoRegistro) {
-                // Actualizar registro con el teléfono y pasar a Estatus = 1 (Pendiente validación)
+            // Obtener los datos temporales de tblUsuario
+            $usrTemp = DB::selectOne("SELECT TempFotoCajas, TempIdTelefonia, CodigoParticipacion FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
+ 
+            if ($usrTemp && !empty($usrTemp['TempFotoCajas']) && !empty($usrTemp['TempIdTelefonia'])) {
+                // Generar token único para el registro
+                $tokenCanje = hash('sha256', $celular . time() . uniqid());
+ 
+                // Insertar el registro final con Estatus = 1 (Por validar / Esperando Validación)
                 DB::execute(
-                    "UPDATE tblRegistro SET TelefonoRecarga = ?, Estatus = 1 WHERE idRegistro = ?",
-                    [$textBody, $ultimoRegistro['idRegistro']]
+                    "INSERT INTO tblRegistro (idUsuario, Token, FotoCajas, CodigoUnico, idTelefonia, TelefonoRecarga, Estatus) 
+                     VALUES (?, ?, ?, ?, ?, ?, 1)",
+                    [
+                        $usuario['idUsuario'],
+                        $tokenCanje,
+                        $usrTemp['TempFotoCajas'],
+                        $usrTemp['CodigoParticipacion'],
+                        $usrTemp['TempIdTelefonia'],
+                        $textBody
+                    ]
                 );
-
-                // Obtener total de participaciones para ver si puede hacer otra
+ 
+                // Limpiar campos temporales en tblUsuario
+                DB::execute(
+                    "UPDATE tblUsuario SET TempFotoCajas = NULL, TempIdTelefonia = NULL WHERE idUsuario = ?",
+                    [$usuario['idUsuario']]
+                );
+ 
+                // Obtener total de participaciones para ver si puede hacer otra (Estatus 1, 2, 4, 5)
                 $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
                 $participaciones = (int)($rowRegs['total'] ?? 0);
-
+ 
                 if ($participaciones >= 2) {
                     $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$textBody}* para tu recarga. 📱\n\n"
                           . "Tu registro pasará a validación... 🔍\n"
@@ -350,7 +349,7 @@ try {
                           . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n\n"
                           . "Recuerda que puedes registrar hasta *2 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola* en cualquier momento. ¡Gracias por participar! 🙏";
                 }
-
+ 
                 $wa->sendText($celular, $body);
                 DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
             } else {
