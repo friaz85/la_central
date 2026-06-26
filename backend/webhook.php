@@ -134,6 +134,9 @@ try {
             // Enviar video tutorial nativo por YCloud
             $videoUrl = "https://clasicoslafe.qrewards.com.mx/assets/video.mp4";
             $wa->sendVideo($celular, $videoUrl, "Video tutorial — Clásicos de la Fe");
+            
+            // Esperar 4 segundos para que Meta procese el video pesado antes de enviar el mensaje de texto
+            sleep(4);
 
             $body = "¡Perfecto, gracias por aceptar! 🙌\n"
                   . "Antes de registrarte, mira el breve video que te acabamos de enviar con todo lo que necesitas hacer 👆\n\n"
