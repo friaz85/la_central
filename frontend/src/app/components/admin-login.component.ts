@@ -13,7 +13,7 @@ import { ApiService } from '../services/api.service';
       <div class="login-card">
         <div class="login-header">
           <img src="logo.png" alt="Logo La Central" style="width: 100px; height: 100px; border-radius: 16px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(255, 209, 0, 0.2); object-fit: cover;">
-          <h1>Clásicos de la Fe</h1>
+          <h1>Clásicos La Fe</h1>
           <p class="subtitle">Panel de Control Administrativo</p>
         </div>
 

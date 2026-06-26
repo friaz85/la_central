@@ -102,7 +102,7 @@ try {
     // Lógica del Bot Conversacional
     if ($pasoActual === 'BIENVENIDA') {
         // Mensaje de bienvenida + Términos y Condiciones
-        $body = "¡Hola! " . ($usuario['Nombre'] ?: 'participante') . " 👋 Bienvenido a la promoción *Clásicos de la Fe* 🔥\n\n"
+        $body = "¡Hola! " . ($usuario['Nombre'] ?: 'participante') . " 👋 Bienvenido a la promoción *Clásicos La Fe* 🔥\n\n"
               . "¡Llevarte una recarga de *Tiempo Aire nunca fue tan fácil*! 📱\n"
               . "Para participar necesitas tener *3 cajas de Cerillos Clásicos La Fe.*\n\n"
               . "Antes de continuar, por favor lee nuestros *Términos y Condiciones*:\n"
@@ -114,7 +114,7 @@ try {
             ['id' => 'tyc_no', 'title' => 'Rechazar (NO)']
         ];
 
-        $wa->sendButtons($celular, $body, $buttons, "Clásicos de la Fe");
+        $wa->sendButtons($celular, $body, $buttons, "Clásicos La Fe");
         DB::execute("UPDATE tblUsuario SET PasoBot = 'TERMINOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
     } 
     elseif ($pasoActual === 'TERMINOS') {
@@ -133,7 +133,7 @@ try {
 
             // Enviar video tutorial nativo por YCloud
             $videoUrl = "https://clasicoslafe.qrewards.com.mx/assets/video.mp4";
-            $wa->sendVideo($celular, $videoUrl, "Video tutorial — Clásicos de la Fe");
+            $wa->sendVideo($celular, $videoUrl, "Video tutorial — Clásicos La Fe");
             
             // Esperar 4 segundos para que Meta procese el video pesado antes de enviar el mensaje de texto
             sleep(4);
@@ -169,7 +169,7 @@ try {
                 ['id' => 'tyc_si', 'title' => 'Aceptar (SÍ)'],
                 ['id' => 'tyc_no', 'title' => 'Rechazar (NO)']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Clásicos de la Fe");
+            $wa->sendButtons($celular, $body, $buttons, "Clásicos La Fe");
         }
     } 
     elseif ($pasoActual === 'VIDEO') {

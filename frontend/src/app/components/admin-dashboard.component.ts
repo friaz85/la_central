@@ -17,7 +17,7 @@ declare const Chart: any;
         <div class="logo-area">
           <img src="logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
           <div class="logo-text">
-            <h2>Clásicos de la Fe</h2>
+            <h2>Clásicos La Fe</h2>
             <p>Panel de Administración</p>
           </div>
           <nav class="header-nav" style="display: flex; gap: 20px; margin-left: 40px;">
