@@ -234,7 +234,8 @@ try {
                 
                 // Nombre único del archivo local
                 $filename = "cerrillera_" . $usuario['idUsuario'] . "_" . time() . "." . $ext;
-                $savedFile = $wa->downloadMedia($mediaId, $filename);
+                $mediaSource = !empty($imageInfo['link']) ? $imageInfo['link'] : $mediaId;
+                $savedFile = $wa->downloadMedia($mediaSource, $filename);
 
                 if ($savedFile) {
                     // Guardar temporalmente en tblUsuario (NO en tblRegistro todavía)

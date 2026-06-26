@@ -202,51 +202,20 @@ class YCloudService
         return $this->request($payload);
     }
     /**
-     * Descarga un archivo de media usando su ID y lo guarda en el servidor local.
+     * Descarga un archivo de media usando su ID o su URL de descarga directa y lo guarda en el servidor local.
      */
-    public function downloadMedia(string $mediaId, string $outputFilename): ?string
+    public function downloadMedia(string $mediaSource, string $outputFilename): ?string
     {
-        // 1. Obtener la información del archivo de YCloud (que nos dará la URL real)
-        $url = "https://api.ycloud.com/v2/whatsapp/media/{$mediaId}";
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_HTTPHEADER     => [
-                "X-API-Key: {$this->apiKey}",
-                "Authorization: Bearer {$this->apiKey}",
-                "Accept: application/json"
-            ],
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $fileContent = null;
 
-        if ($httpCode !== 200) {
-            error_log("YCloud downloadMedia: failed to fetch info for media {$mediaId}, HTTP {$httpCode}. Response: {$response}");
-            return null;
-        }
-
-        $data = json_decode($response, true);
-        
-        // Si YCloud devuelve la URL temporal (estilo Meta)
-        $downloadUrl = $data['url'] ?? null;
-        
-        // Si no devuelve una URL, pero responde binario directo (dependiendo de la implementación de YCloud v2)
-        if (!$downloadUrl) {
-            // Guardamos el response directo si no es JSON (es el archivo binario)
-            if (isset($data['error'])) {
-                error_log("YCloud downloadMedia error in JSON response: " . json_encode($data));
-                return null;
-            }
-            $fileContent = $response;
-        } else {
-            // 2. Descargar el binario usando la URL temporal
+        // Si es una URL completa (contiene el signature y payload ya provisto por el webhook)
+        if (strpos($mediaSource, 'http') === 0) {
+            $downloadUrl = $mediaSource;
+            
             $ch = curl_init($downloadUrl);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 30,
-                // Nota: Meta requiere que no se envíe el header de YCloud o que sí se envíe
                 CURLOPT_HTTPHEADER     => [
                     "X-API-Key: {$this->apiKey}",
                     "Authorization: Bearer {$this->apiKey}"
@@ -257,7 +226,7 @@ class YCloudService
             curl_close($ch);
 
             if ($httpCode !== 200) {
-                // Intentar descargar sin header si falla (Meta a veces no requiere auth para el CDN directo)
+                // Re-intentar sin los headers (a veces Meta no requiere auth para el CDN directo si ya viene firmado)
                 $ch = curl_init($downloadUrl);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -270,6 +239,69 @@ class YCloudService
                 if ($httpCode !== 200) {
                     error_log("YCloud downloadMedia: failed to download binary content from URL. HTTP {$httpCode}");
                     return null;
+                }
+            }
+        } else {
+            // 1. Obtener la información del archivo de YCloud (que nos dará la URL real)
+            $mediaId = $mediaSource;
+            $url = "https://api.ycloud.com/v2/whatsapp/media/{$mediaId}";
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_HTTPHEADER     => [
+                    "X-API-Key: {$this->apiKey}",
+                    "Authorization: Bearer {$this->apiKey}",
+                    "Accept: application/json"
+                ],
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                error_log("YCloud downloadMedia: failed to fetch info for media {$mediaId}, HTTP {$httpCode}. Response: {$response}");
+                return null;
+            }
+
+            $data = json_decode($response, true);
+            $downloadUrl = $data['url'] ?? null;
+
+            if (!$downloadUrl) {
+                if (isset($data['error'])) {
+                    error_log("YCloud downloadMedia error in JSON response: " . json_encode($data));
+                    return null;
+                }
+                $fileContent = $response;
+            } else {
+                // 2. Descargar el binario usando la URL temporal
+                $ch = curl_init($downloadUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 30,
+                    CURLOPT_HTTPHEADER     => [
+                        "X-API-Key: {$this->apiKey}",
+                        "Authorization: Bearer {$this->apiKey}"
+                    ],
+                ]);
+                $fileContent = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($httpCode !== 200) {
+                    $ch = curl_init($downloadUrl);
+                    curl_setopt_array($ch, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_TIMEOUT        => 30,
+                    ]);
+                    $fileContent = curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    
+                    if ($httpCode !== 200) {
+                        error_log("YCloud downloadMedia: failed to download binary content from URL. HTTP {$httpCode}");
+                        return null;
+                    }
                 }
             }
         }
