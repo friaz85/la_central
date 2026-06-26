@@ -213,6 +213,7 @@ class YCloudService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 15,
             CURLOPT_HTTPHEADER     => [
+                "X-API-Key: {$this->apiKey}",
                 "Authorization: Bearer {$this->apiKey}",
                 "Accept: application/json"
             ],
@@ -247,6 +248,7 @@ class YCloudService
                 CURLOPT_TIMEOUT        => 30,
                 // Nota: Meta requiere que no se envíe el header de YCloud o que sí se envíe
                 CURLOPT_HTTPHEADER     => [
+                    "X-API-Key: {$this->apiKey}",
                     "Authorization: Bearer {$this->apiKey}"
                 ],
             ]);
