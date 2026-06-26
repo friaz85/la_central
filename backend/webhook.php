@@ -106,7 +106,7 @@ try {
               . "¡Llevarte una recarga de *Tiempo Aire nunca fue tan fácil*! 📱\n"
               . "Para participar necesitas tener *3 cajas de Cerillos Clásicos La Fe.*\n\n"
               . "Antes de continuar, por favor lee nuestros *Términos y Condiciones*:\n"
-              . "📄 https://clasicosdelafe.qrewards.com.mx/terminos-y-condiciones.pdf\n\n"
+              . "📄 https://qrewards.com.mx/clasicoslafe\n\n"
               . "¿Aceptas los términos y condiciones?";
 
         $buttons = [
@@ -161,7 +161,7 @@ try {
         else {
             // Respuesta no válida en este paso, reenviar botones
             $body = "¿Aceptas los Términos y Condiciones para participar?\n"
-                  . "📄 https://clasicosdelafe.qrewards.com.mx/terminos-y-condiciones.pdf";
+                  . "📄 https://qrewards.com.mx/clasicoslafe";
             $buttons = [
                 ['id' => 'tyc_si', 'title' => 'Aceptar (SÍ)'],
                 ['id' => 'tyc_no', 'title' => 'Rechazar (NO)']
