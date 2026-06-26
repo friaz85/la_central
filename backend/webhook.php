@@ -15,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $rawBody = file_get_contents('php://input');
 $data = json_decode($rawBody, true);
 
+// Log raw body for debugging inbound media structure
+error_log("Webhook Raw Body: " . $rawBody);
+
 if (!$data) {
     http_response_code(400);
     echo "JSON inválido";
