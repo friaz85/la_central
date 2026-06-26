@@ -312,10 +312,54 @@ try {
         $textBody = preg_replace('/\D/', '', $inbound['text']['body'] ?? '');
  
         if (strlen($textBody) === 10) {
+            // Guardar temporalmente el número en tblUsuario
+            DB::execute(
+                "UPDATE tblUsuario SET TempTelefonoRecarga = ? WHERE idUsuario = ?",
+                [$textBody, $usuario['idUsuario']]
+            );
+
+            // Obtener los datos temporales de tblUsuario para la confirmación
+            $usrTemp = DB::selectOne("SELECT TempIdTelefonia FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $idTelefonia = (int)($usrTemp['TempIdTelefonia'] ?? 0);
+
+            $telefoniaRow = DB::selectOne("SELECT Telefonia FROM tblTelefonia WHERE idTelefonia = ?", [$idTelefonia]);
+            $nombreTelefonia = $telefoniaRow['Telefonia'] ?? 'Compañía';
+
+            $body = "🔍 *Por favor, confirma tus datos antes de continuar:*\n\n"
+                  . "📱 *Compañía:* {$nombreTelefonia}\n"
+                  . "📞 *Número de Recarga:* {$textBody}\n\n"
+                  . "¿Los datos son correctos?";
+
+            $buttons = [
+                ['id' => 'confirm_si', 'title' => 'Sí, Confirmar'],
+                ['id' => 'confirm_cambiar_tel', 'title' => 'Cambiar Número'],
+                ['id' => 'confirm_cambiar_comp', 'title' => 'Cambiar Compañía']
+            ];
+
+            $wa->sendButtons($celular, $body, $buttons, "Confirmación");
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'CONFIRMACION_DATOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+        } else {
+            $body = "El número ingresado no es válido. ❌\n\n"
+                  . "Por favor, escribe el *número celular a 10 dígitos* (solo números, ej: 5512345678) para tu recarga:";
+            $wa->sendText($celular, $body);
+        }
+    }
+    elseif ($pasoActual === 'CONFIRMACION_DATOS') {
+        $userResponse = '';
+        if ($msgType === 'interactive') {
+            $userResponse = $inbound['interactive']['button_reply']['id'] ?? '';
+        } else {
+            $textBody = strtolower(trim($inbound['text']['body'] ?? ''));
+            if ($textBody === 'si' || $textBody === 'sí' || $textBody === 'confirmar') $userResponse = 'confirm_si';
+            if (strpos($textBody, 'número') !== false || strpos($textBody, 'numero') !== false) $userResponse = 'confirm_cambiar_tel';
+            if (strpos($textBody, 'compañía') !== false || strpos($textBody, 'compañia') !== false || strpos($textBody, 'comp') !== false) $userResponse = 'confirm_cambiar_comp';
+        }
+
+        if ($userResponse === 'confirm_si') {
             // Obtener los datos temporales de tblUsuario
-            $usrTemp = DB::selectOne("SELECT TempFotoCajas, TempIdTelefonia, CodigoParticipacion FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $usrTemp = DB::selectOne("SELECT TempFotoCajas, TempIdTelefonia, TempTelefonoRecarga, CodigoParticipacion FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
  
-            if ($usrTemp && !empty($usrTemp['TempFotoCajas']) && !empty($usrTemp['TempIdTelefonia'])) {
+            if ($usrTemp && !empty($usrTemp['TempFotoCajas']) && !empty($usrTemp['TempIdTelefonia']) && !empty($usrTemp['TempTelefonoRecarga'])) {
                 // Generar token único para el registro
                 $tokenCanje = hash('sha256', $celular . time() . uniqid());
  
@@ -329,13 +373,13 @@ try {
                         $usrTemp['TempFotoCajas'],
                         $usrTemp['CodigoParticipacion'],
                         $usrTemp['TempIdTelefonia'],
-                        $textBody
+                        $usrTemp['TempTelefonoRecarga']
                     ]
                 );
  
                 // Limpiar campos temporales en tblUsuario
                 DB::execute(
-                    "UPDATE tblUsuario SET TempFotoCajas = NULL, TempIdTelefonia = NULL WHERE idUsuario = ?",
+                    "UPDATE tblUsuario SET TempFotoCajas = NULL, TempIdTelefonia = NULL, TempTelefonoRecarga = NULL WHERE idUsuario = ?",
                     [$usuario['idUsuario']]
                 );
  
@@ -344,12 +388,12 @@ try {
                 $participaciones = (int)($rowRegs['total'] ?? 0);
  
                 if ($participaciones >= 2) {
-                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$textBody}* para tu recarga. 📱\n\n"
+                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$usrTemp['TempTelefonoRecarga']}* para tu recarga. 📱\n\n"
                           . "Tu registro pasará a validación... 🔍\n"
                           . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n"
                           . "¡Muchas gracias por participar! 🙏";
                 } else {
-                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$textBody}* para tu recarga. 📱\n\n"
+                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$usrTemp['TempTelefonoRecarga']}* para tu recarga. 📱\n\n"
                           . "Tu registro pasará a validación... 🔍\n"
                           . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n\n"
                           . "Recuerda que puedes registrar hasta *2 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola* en cualquier momento. ¡Gracias por participar! 🙏";
@@ -361,10 +405,45 @@ try {
                 $wa->sendText($celular, "Ocurrió un inconveniente. Por favor, envía la foto nuevamente. 📸");
                 DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
             }
-        } else {
-            $body = "El número ingresado no es válido. ❌\n\n"
-                  . "Por favor, escribe el *número celular a 10 dígitos* (solo números, ej: 5512345678) para tu recarga:";
+        }
+        elseif ($userResponse === 'confirm_cambiar_tel') {
+            $body = "Por favor, escribe el *nuevo número celular a 10 dígitos* al cual deseas que le realicemos la recarga telefónica:";
             $wa->sendText($celular, $body);
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_TELEFONO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+        }
+        elseif ($userResponse === 'confirm_cambiar_comp') {
+            $bodyList = "Por favor, selecciona nuevamente tu compañía telefónica de la siguiente lista:";
+            $rowsList = [
+                ['id' => 'tel_1', 'title' => 'Telcel'],
+                ['id' => 'tel_2', 'title' => 'AT&T'],
+                ['id' => 'tel_3', 'title' => 'Unefon'],
+                ['id' => 'tel_4', 'title' => 'Movistar'],
+                ['id' => 'tel_5', 'title' => 'Virgin Mobile']
+            ];
+            $wa->sendList($celular, $bodyList, "Ver Compañías", $rowsList, "Compañía Telefónica");
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'SELECCION_TELEFONIA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+        }
+        else {
+            $usrTemp = DB::selectOne("SELECT TempIdTelefonia, TempTelefonoRecarga FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            if ($usrTemp && !empty($usrTemp['TempIdTelefonia']) && !empty($usrTemp['TempTelefonoRecarga'])) {
+                $telefoniaRow = DB::selectOne("SELECT Telefonia FROM tblTelefonia WHERE idTelefonia = ?", [$usrTemp['TempIdTelefonia']]);
+                $nombreTelefonia = $telefoniaRow['Telefonia'] ?? 'Compañía';
+
+                $body = "🔍 *Confirma tus datos para continuar:*\n\n"
+                      . "📱 *Compañía:* {$nombreTelefonia}\n"
+                      . "📞 *Número de Recarga:* {$usrTemp['TempTelefonoRecarga']}\n\n"
+                      . "¿Los datos son correctos?";
+
+                $buttons = [
+                    ['id' => 'confirm_si', 'title' => 'Sí, Confirmar'],
+                    ['id' => 'confirm_cambiar_tel', 'title' => 'Cambiar Número'],
+                    ['id' => 'confirm_cambiar_comp', 'title' => 'Cambiar Compañía']
+                ];
+                $wa->sendButtons($celular, $body, $buttons, "Confirmación");
+            } else {
+                $wa->sendText($celular, "Ocurrió un inconveniente. Por favor escribe *Hola* para reiniciar. 🔄");
+                DB::execute("UPDATE tblUsuario SET PasoBot = 'BIENVENIDA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            }
         }
     }
     elseif ($pasoActual === 'COMPLETADO') {
