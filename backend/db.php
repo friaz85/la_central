@@ -17,6 +17,7 @@ class DB
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ];
                 self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+                self::$instance->exec("SET time_zone = '-06:00'");
             } catch (PDOException $e) {
                 error_log("DB Connection Error: " . $e->getMessage());
                 http_response_code(500);
