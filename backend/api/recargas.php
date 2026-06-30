@@ -12,8 +12,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     try {
         // Query para traer logs de recarga con información de usuario, teléfono receptor y código único de participación
-        $query = "SELECT lr.idLog, lr.idRegistro, lr.Mensaje, lr.Codigo, lr.Folio, lr.FechaRegistro, 
-                         r.CodigoUnico, r.TelefonoRecarga, 
+        $query = "SELECT lr.idLog, lr.idRegistro, lr.Mensaje, lr.Codigo, lr.FechaRegistro, 
+                         r.CodigoUnico, r.TelefonoRecarga, r.Monto, r.FolioRecarga AS Folio,
                          u.Celular, u.Nombre as NombreUsuario,
                          t.Telefonia
                   FROM tblLogRecarga lr

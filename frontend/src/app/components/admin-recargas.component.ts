@@ -16,6 +16,7 @@ interface RecargaLog {
   Celular: string | null;
   NombreUsuario: string | null;
   Telefonia: string | null;
+  Monto: number | null;
 }
 
 @Component({
@@ -27,7 +28,7 @@ interface RecargaLog {
       <!-- Top Navigation Header -->
       <header class="header">
         <div class="logo-area">
-          <img src="logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
+          <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
           <div class="logo-text">
             <h2>Clásicos La Fe</h2>
             <p>Panel de Administración</p>
@@ -48,9 +49,14 @@ interface RecargaLog {
         <!-- Header Section -->
         <div class="page-title-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
           <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #fff;">Historial de Recargas</h2>
-          <button (click)="loadData()" class="refresh-btn" [disabled]="loading()">
-            {{ loading() ? 'Cargando...' : '🔄 Actualizar Historial' }}
-          </button>
+          <div style="display: flex; gap: 12px;">
+            <button (click)="exportToCSV()" class="refresh-btn" style="background: rgba(255, 209, 0, 0.2); border-color: rgba(255, 209, 0, 0.4); color: #FFD100; font-weight: 600;">
+              📥 Exportar CSV
+            </button>
+            <button (click)="loadData()" class="refresh-btn" [disabled]="loading()">
+              {{ loading() ? 'Cargando...' : '🔄 Actualizar Historial' }}
+            </button>
+          </div>
         </div>
 
         <!-- Filter / Stats Bar -->
@@ -80,7 +86,7 @@ interface RecargaLog {
                   <th>Compañía</th>
                   <th>Estatus</th>
                   <th>Folio Taecel</th>
-                  <th>Código Respuesta</th>
+                  <th>Monto</th>
                   <th>Fecha Registro</th>
                 </tr>
               </thead>
@@ -113,7 +119,7 @@ interface RecargaLog {
                     <span class="folio-text" [class.no-folio]="!rec.Folio">{{ rec.Folio || '—' }}</span>
                   </td>
                   <td>
-                    <code class="code-value">{{ rec.Codigo }}</code>
+                    <span style="font-weight: 600; color: #FFD100;">{{ rec.Monto ? '$' + rec.Monto : '—' }}</span>
                   </td>
                   <td>
                     <span style="color: #aeaeb2;">{{ rec.FechaRegistro | date:'dd/MM/yyyy HH:mm:ss' }}</span>
@@ -348,6 +354,60 @@ export class AdminRecargasComponent implements OnInit {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  exportToCSV() {
+    const data = this.recargas();
+    if (data.length === 0) {
+      alert('No hay datos para exportar.');
+      return;
+    }
+    
+    // Definir encabezados
+    const headers = [
+      'Usuario',
+      'Celular Participante',
+      'Celular Recarga',
+      'Codigo Unico',
+      'Compania',
+      'Monto',
+      'Estatus',
+      'Folio Recarga',
+      'Mensaje',
+      'Fecha Registro'
+    ];
+    
+    // Construir contenido CSV
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const rec of data) {
+      const row = [
+        rec.NombreUsuario || 'Participante',
+        rec.Celular || '',
+        rec.TelefonoRecarga || '',
+        rec.CodigoUnico || '',
+        rec.Telefonia || '',
+        rec.Monto ? `$${rec.Monto}` : '',
+        rec.Codigo === '0' ? 'Exitosa' : 'Fallida',
+        rec.Folio || '',
+        (rec.Mensaje || '').replace(/"/g, '""'), // Escapar comillas
+        rec.FechaRegistro
+      ];
+      csvRows.push(row.map(val => `"${val}"`).join(','));
+    }
+    
+    // Añadir BOM para compatibilidad con Excel (UTF-8)
+    const csvContent = "\uFEFF" + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `historial_recargas_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   logout() {
