@@ -103,8 +103,8 @@ elseif ($method === 'POST') {
             $approvedCount = (int)($approvedCountRow['total'] ?? 0);
             
             $monto = 20.00;
-            // Si es la participación número 100, 200, 300...
-            if (($approvedCount + 1) % 100 === 0) {
+            // Si es la participación múltiplo de 5 (para pruebas, temporalmente)
+            if (($approvedCount + 1) % 5 === 0) {
                 $monto = 50.00;
             }
 
