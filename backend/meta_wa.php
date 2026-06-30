@@ -290,8 +290,21 @@ class MetaWAService
         curl_close($ch);
 
         if ($httpCode !== 200) {
-            error_log("360dialog downloadMedia: failed to download binary content from URL. HTTP {$httpCode}");
-            return null;
+            // Reintentar sin cabeceras (para CDNs directos de Meta pre-firmados que rechazan cabeceras personalizadas)
+            $ch = curl_init($downloadUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_FOLLOWLOCATION => true,
+            ]);
+            $fileContent = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode !== 200) {
+                error_log("360dialog downloadMedia: failed to download binary content from URL. HTTP {$httpCode}");
+                return null;
+            }
         }
 
         // Crear directorio si no existe
