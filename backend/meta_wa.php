@@ -240,7 +240,7 @@ class MetaWAService
     {
         $fileContent = null;
 
-        // Si es una URL directa
+        // Si es una URL directa (a veces devuelta directamente por webhooks)
         if (strpos($mediaSource, 'http') === 0) {
             $downloadUrl = $mediaSource;
         } else {
@@ -275,36 +275,51 @@ class MetaWAService
             }
         }
 
+        // Si la URL de descarga apunta al CDN de Meta, debemos reemplazar el host por el de 360dialog 
+        // para que 360dialog actúe de proxy usando nuestro token de autorización.
+        if (strpos($downloadUrl, 'https://lookaside.fbsbx.com') === 0) {
+            $downloadUrl = str_replace('https://lookaside.fbsbx.com', 'https://waba-v2.360dialog.io', $downloadUrl);
+        }
+
         // 2. Descargar el binario usando la URL de descarga (requiere cabecera D360-API-KEY)
+        // Hacemos la petición a 360dialog SIN seguir redirecciones automáticamente
+        // para capturar el redirect y descargarlo de Meta directamente sin enviar cabeceras de 360dialog.
         $ch = curl_init($downloadUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_HEADER         => true,          // Obtener las cabeceras de la respuesta
+            CURLOPT_FOLLOWLOCATION => false,         // NO seguir la redirección automáticamente
             CURLOPT_HTTPHEADER     => [
                 "D360-API-KEY: {$this->accessToken}"
             ],
         ]);
-        $fileContent = curl_exec($ch);
+        $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200) {
-            // Reintentar sin cabeceras (para CDNs directos de Meta pre-firmados que rechazan cabeceras personalizadas)
-            $ch = curl_init($downloadUrl);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 30,
-                CURLOPT_FOLLOWLOCATION => true,
-            ]);
-            $fileContent = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpCode !== 200) {
-                error_log("360dialog downloadMedia: failed to download binary content from URL. HTTP {$httpCode}");
-                return null;
+        $realDownloadUrl = $downloadUrl;
+        if ($httpCode === 302 || $httpCode === 301 || $httpCode === 307) {
+            // Extraer la URL de redirección (Location)
+            if (preg_match('/^Location:\s*(https?:\/\/[^\s\r\n]+)/im', $response, $matches)) {
+                $realDownloadUrl = trim($matches[1]);
             }
+        }
+
+        // Descargar el binario final (sin cabeceras de 360dialog para no causar 401 en Meta/AWS CDN)
+        $ch = curl_init($realDownloadUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 45,
+            CURLOPT_FOLLOWLOCATION => true,          // Aquí sí seguimos cualquier redirección del CDN de Meta
+        ]);
+        $fileContent = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200) {
+            error_log("360dialog downloadMedia: failed to download binary content from URL {$realDownloadUrl}. HTTP {$httpCode}");
+            return null;
         }
 
         // Crear directorio si no existe
