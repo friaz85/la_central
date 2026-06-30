@@ -106,7 +106,7 @@ interface RecargaLog {
                       class="status-badge" 
                       [ngClass]="rec.Codigo === '0' ? 'approved' : 'rejected'"
                       [title]="rec.Codigo === '0' ? 'Recarga procesada correctamente' : rec.Mensaje">
-                      {{ rec.Codigo === '0' ? '✓ Exitosa' : '✕ No Exitosa 🛈' }}
+                      {{ rec.Codigo === '0' ? '✓ Exitosa' : '✕ No Exitosa ℹ' }}
                     </span>
                   </td>
                   <td>
