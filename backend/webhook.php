@@ -132,6 +132,17 @@ if (empty($celular)) {
     exit;
 }
 
+if (!empty($msgId)) {
+    // Verificar duplicados para evitar procesamiento paralelo/reintentos
+    $existe = DB::selectOne("SELECT 1 FROM tblLog WHERE Accion = 'WEBHOOK_PROCESSED' AND Descripcion = ?", [$msgId]);
+    if ($existe) {
+        error_log("Webhook: message {$msgId} already processed, skipping retry.");
+        exit;
+    }
+    // Registrar procesamiento para bloquear reintentos
+    DB::execute("INSERT INTO tblLog (Accion, Descripcion) VALUES ('WEBHOOK_PROCESSED', ?)", [$msgId]);
+}
+
 // Inicializar el servicio de Meta WA
 $wa = new MetaWAService();
 
