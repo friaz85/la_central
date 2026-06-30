@@ -166,8 +166,8 @@ elseif ($method === 'POST') {
 
                     // Insertar Log de Recarga
                     DB::execute(
-                        "INSERT INTO tblLogRecarga (idRegistro, Mensaje, Codigo) VALUES (?, ?, '0')",
-                        [$idRegistro, "Recarga exitosa desde admin. Folio: $folio. Saldo Taecel: $saldoRaw"]
+                        "INSERT INTO tblLogRecarga (idRegistro, Mensaje, Codigo, FechaRegistro, Folio) VALUES (?, ?, '0', ?, ?)",
+                        [$idRegistro, "Recarga exitosa desde admin. Folio: $folio. Saldo Taecel: $saldoRaw", date('Y-m-d H:i:s'), $folio]
                     );
                     $recargaExitosa = true;
                 } else {
@@ -175,8 +175,8 @@ elseif ($method === 'POST') {
                     $errCode = (string)($statusResponse['error'] ?? 'E');
 
                     DB::execute(
-                        "INSERT INTO tblLogRecarga (idRegistro, Mensaje, Codigo) VALUES (?, ?, ?)",
-                        [$idRegistro, "Fallo verificación desde admin: $msgError", $errCode]
+                        "INSERT INTO tblLogRecarga (idRegistro, Mensaje, Codigo, FechaRegistro, Folio) VALUES (?, ?, ?, ?, NULL)",
+                        [$idRegistro, "Fallo verificación desde admin: $msgError", $errCode, date('Y-m-d H:i:s')]
                     );
                 }
             } else {
@@ -184,8 +184,8 @@ elseif ($method === 'POST') {
                 $errCode = (string)($txnResponse['error'] ?? 'E');
 
                 DB::execute(
-                    "INSERT INTO tblLogRecarga (idRegistro, Mensaje, Codigo) VALUES (?, ?, ?)",
-                    [$idRegistro, "Fallo RequestTXN desde admin: $msgError", $errCode]
+                    "INSERT INTO tblLogRecarga (idRegistro, Mensaje, Codigo, FechaRegistro, Folio) VALUES (?, ?, ?, ?, NULL)",
+                    [$idRegistro, "Fallo RequestTXN desde admin: $msgError", $errCode, date('Y-m-d H:i:s')]
                 );
             }
 

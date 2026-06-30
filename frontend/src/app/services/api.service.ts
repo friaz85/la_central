@@ -70,6 +70,10 @@ export class ApiService {
     return this.http.get(`${this.apiBaseUrl}/api/dashboard.php`, { headers, params });
   }
 
+  getRecargas(): Observable<any> {
+    return this.http.get(`${this.apiBaseUrl}/api/recargas.php`, { headers: this.getAuthHeaders() });
+  }
+
   // --- Endpoints Públicos de Canje ---
   
   getTelefonias(): Observable<any> {

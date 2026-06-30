@@ -42,6 +42,7 @@ interface Registro {
           <nav class="header-nav" style="display: flex; gap: 20px; margin-left: 40px;">
             <a routerLink="/admin/dashboard" routerLinkActive="active" style="color: #8e8e93; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.3s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#8e8e93'">Dashboard</a>
             <a routerLink="/admin/registros" routerLinkActive="active" style="color: #ff453a; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Registros</a>
+            <a routerLink="/admin/recargas" routerLinkActive="active" style="color: #8e8e93; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.3s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#8e8e93'">Recargas</a>
           </nav>
         </div>
         <div class="user-profile">

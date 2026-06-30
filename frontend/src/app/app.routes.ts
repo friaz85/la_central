@@ -35,6 +35,11 @@ export const routes: Routes = [
     canActivate: [adminGuard]
   },
   { 
+    path: 'admin/recargas', 
+    loadComponent: () => import('./components/admin-recargas.component').then(m => m.AdminRecargasComponent),
+    canActivate: [adminGuard]
+  },
+  { 
     path: '**', 
     redirectTo: 'admin/dashboard' 
   }
