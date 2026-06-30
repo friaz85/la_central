@@ -1,8 +1,19 @@
-<?php
-// webhook.php — Procesador de Webhook de YCloud para WhatsApp
+// webhook.php — Procesador de Webhook de Meta para WhatsApp
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/ycloud.php';
+require_once __DIR__ . '/meta_wa.php';
+
+// Validar método GET (Verificación de Webhook para la consola de Meta Developers)
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $verifyToken = defined('META_WEBHOOK_VERIFY_TOKEN') ? META_WEBHOOK_VERIFY_TOKEN : 'la_central_meta_token_verify';
+    if (isset($_GET['hub_mode']) && $_GET['hub_mode'] === 'subscribe' && isset($_GET['hub_verify_token']) && $_GET['hub_verify_token'] === $verifyToken) {
+        echo $_GET['hub_challenge'];
+        exit;
+    }
+    http_response_code(400);
+    echo "Firma de verificación inválida";
+    exit;
+}
 
 // Validar método POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -24,27 +35,25 @@ if (!$data) {
     exit;
 }
 
-// Validar firma del webhook si está configurada (YCloud-Signature)
-if (defined('YCLOUD_WEBHOOK_SECRET') && !empty(YCLOUD_WEBHOOK_SECRET)) {
-    $signatureHeader = $_SERVER['HTTP_YCLOUD_SIGNATURE'] ?? '';
-    // YCloud-Signature: t=timestamp,s=signature
-    if (preg_match('/t=(\d+),s=([a-f0-9]+)/', $signatureHeader, $matches)) {
-        $timestamp = $matches[1];
-        $signature = $matches[2];
-        $expectedSignature = hash_hmac('sha256', $timestamp . '.' . $rawBody, YCLOUD_WEBHOOK_SECRET);
+// Validar firma del webhook si está configurada en Meta (X-Hub-Signature-256)
+if (defined('META_APP_SECRET') && !empty(META_APP_SECRET)) {
+    $signatureHeader = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+    if (preg_match('/sha256=([a-f0-9]+)/', $signatureHeader, $matches)) {
+        $signature = $matches[1];
+        $expectedSignature = hash_hmac('sha256', $rawBody, META_APP_SECRET);
         if (!hash_equals($expectedSignature, $signature)) {
             http_response_code(401);
-            error_log("Webhook signature mismatch");
+            error_log("Meta webhook signature mismatch");
             exit;
         }
     } else {
         http_response_code(401);
-        error_log("Missing signature header");
+        error_log("Missing X-Hub-Signature-256 header");
         exit;
     }
 }
 
-// Responder HTTP 200 inmediatamente a YCloud
+// Responder HTTP 200 inmediatamente a Meta
 http_response_code(200);
 echo json_encode(["status" => "received"]);
 
@@ -53,12 +62,62 @@ if (function_exists('fastcgi_finish_request')) {
     fastcgi_finish_request();
 }
 
-// Solo procesar si el evento es de mensaje recibido
-if (($data['type'] ?? '') !== 'whatsapp.inbound_message.received') {
-    exit;
+// Normalizar la carga útil de Meta al formato que espera nuestro bot ($inbound)
+$inbound = null;
+
+if (isset($data['object']) && $data['object'] === 'whatsapp_business_account') {
+    $entry = $data['entry'][0] ?? null;
+    $change = $entry['changes'][0] ?? null;
+    $value = $change['value'] ?? null;
+    
+    if ($value && isset($value['messages'][0])) {
+        $message = $value['messages'][0];
+        $contact = $value['contacts'][0] ?? null;
+        
+        $celular = $message['from'] ?? '';
+        $msgId = $message['id'] ?? '';
+        $msgType = $message['type'] ?? 'text';
+        $userName = $contact['profile']['name'] ?? 'Participante';
+        
+        $inbound = [
+            'from' => $celular,
+            'id' => $msgId,
+            'type' => $msgType,
+            'customerProfile' => ['name' => $userName],
+        ];
+        
+        if ($msgType === 'text') {
+            $inbound['text'] = [
+                'body' => $message['text']['body'] ?? ''
+            ];
+        } elseif ($msgType === 'interactive') {
+            $interactiveType = $message['interactive']['type'] ?? '';
+            if ($interactiveType === 'button_reply') {
+                $inbound['interactive'] = [
+                    'button_reply' => [
+                        'id' => $message['interactive']['button_reply']['id'] ?? '',
+                        'title' => $message['interactive']['button_reply']['title'] ?? ''
+                    ]
+                ];
+            } elseif ($interactiveType === 'list_reply') {
+                $inbound['interactive'] = [
+                    'list_reply' => [
+                        'id' => $message['interactive']['list_reply']['id'] ?? '',
+                        'title' => $message['interactive']['list_reply']['title'] ?? '',
+                        'description' => $message['interactive']['list_reply']['description'] ?? ''
+                    ]
+                ];
+            }
+        } elseif ($msgType === 'image') {
+            $inbound['image'] = [
+                'id' => $message['image']['id'] ?? '',
+                'mime_type' => $message['image']['mime_type'] ?? 'image/jpeg',
+                'caption' => $message['image']['caption'] ?? ''
+            ];
+        }
+    }
 }
 
-$inbound = $data['whatsappInboundMessage'] ?? null;
 if (!$inbound) {
     exit;
 }
@@ -66,14 +125,14 @@ if (!$inbound) {
 $celular = $inbound['from'] ?? '';
 $msgId   = $inbound['id'] ?? '';
 $msgType = $inbound['type'] ?? 'text';
-$userName = $inbound['customerProfile']['name'] ?? $inbound['customer']['name'] ?? 'Participante';
+$userName = $inbound['customerProfile']['name'] ?? 'Participante';
 
 if (empty($celular)) {
     exit;
 }
 
-// Inicializar el servicio de YCloud
-$wa = new YCloudService();
+// Inicializar el servicio de Meta WA
+$wa = new MetaWAService();
 
 try {
     // Buscar o crear usuario en la BD

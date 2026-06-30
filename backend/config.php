@@ -46,3 +46,9 @@ date_default_timezone_set('America/Mexico_City');
 // Plantillas oficiales de WhatsApp (YCloud) para notificaciones fuera de la ventana de 24 horas
 define('YCLOUD_TEMPLATE_APROBACION', 'registro_aprobado'); // Nombre de la plantilla en Meta/YCloud (ej. variables: {{1}} = Nombre, {{2}} = Monto, {{3}} = Folio)
 define('YCLOUD_TEMPLATE_RECHAZO', 'registro_rechazado');       // Nombre de la plantilla en Meta/YCloud (ej. variables: {{1}} = Nombre, {{2}} = Motivo)
+
+// Configuración de 360dialog (Meta-compliant v2 API)
+define('META_ACCESS_TOKEN', '3I4O3QydIWXXH14JVtlwRlKqAK');
+define('META_TEMPLATE_APROBACION', 'registro_aprobado');
+define('META_TEMPLATE_RECHAZO', 'registro_rechazado');
+

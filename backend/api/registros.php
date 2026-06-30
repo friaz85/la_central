@@ -6,7 +6,7 @@ require_once __DIR__ . '/auth_helper.php';
 $userData = validateAuth(); // Proteger endpoint
 
 require_once __DIR__ . '/../db.php';
-require_once __DIR__ . '/../ycloud.php';
+require_once __DIR__ . '/../meta_wa.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -65,7 +65,7 @@ elseif ($method === 'POST') {
             exit;
         }
 
-        $wa = new YCloudService();
+        $wa = new MetaWAService();
 
         if ($accion === 'aprobar') {
             // Validar que el registro tenga una telefonía seleccionada
@@ -205,10 +205,10 @@ elseif ($method === 'POST') {
             $notificado = false;
             $diffHours = (time() - strtotime($registro['FechaRegistro'])) / 3600;
 
-            if ($diffHours > 24 && defined('YCLOUD_TEMPLATE_APROBACION') && !empty(YCLOUD_TEMPLATE_APROBACION)) {
+            if ($diffHours > 24 && defined('META_TEMPLATE_APROBACION') && !empty(META_TEMPLATE_APROBACION)) {
                 // Notificar por plantilla (fuera de ventana de 24h)
                 // Parámetros de plantilla sugeridos: [Nombre, Monto, Folio]
-                $res = $wa->sendTemplate($registro['Celular'], YCLOUD_TEMPLATE_APROBACION, 'es_MX', [
+                $res = $wa->sendTemplate($registro['Celular'], META_TEMPLATE_APROBACION, 'es_MX', [
                     $registro['Nombre'] ?: 'Participante',
                     number_format($monto, 2),
                     $folio ?: 'En proceso'
@@ -219,9 +219,9 @@ elseif ($method === 'POST') {
             if (!$notificado) {
                 // Dentro de las 24h o fallback
                 $res = $wa->sendText($registro['Celular'], $mensaje);
-                if (empty($res['success']) && defined('YCLOUD_TEMPLATE_APROBACION') && !empty(YCLOUD_TEMPLATE_APROBACION)) {
+                if (empty($res['success']) && defined('META_TEMPLATE_APROBACION') && !empty(META_TEMPLATE_APROBACION)) {
                     // Si falló el texto libre, intentar con plantilla
-                    $wa->sendTemplate($registro['Celular'], YCLOUD_TEMPLATE_APROBACION, 'es_MX', [
+                    $wa->sendTemplate($registro['Celular'], META_TEMPLATE_APROBACION, 'es_MX', [
                         $registro['Nombre'] ?: 'Participante',
                         number_format($monto, 2),
                         $folio ?: 'En proceso'
@@ -261,10 +261,10 @@ elseif ($method === 'POST') {
             $notificado = false;
             $diffHours = (time() - strtotime($registro['FechaRegistro'])) / 3600;
 
-            if ($diffHours > 24 && defined('YCLOUD_TEMPLATE_RECHAZO') && !empty(YCLOUD_TEMPLATE_RECHAZO)) {
+            if ($diffHours > 24 && defined('META_TEMPLATE_RECHAZO') && !empty(META_TEMPLATE_RECHAZO)) {
                 // Notificar por plantilla (fuera de ventana de 24h)
                 // Parámetros de plantilla sugeridos: [Nombre, Motivo]
-                $res = $wa->sendTemplate($registro['Celular'], YCLOUD_TEMPLATE_RECHAZO, 'es_MX', [
+                $res = $wa->sendTemplate($registro['Celular'], META_TEMPLATE_RECHAZO, 'es_MX', [
                     $registro['Nombre'] ?: 'Participante',
                     $motivo
                 ]);
@@ -273,8 +273,8 @@ elseif ($method === 'POST') {
 
             if (!$notificado) {
                 $res = $wa->sendText($registro['Celular'], $mensaje);
-                if (empty($res['success']) && defined('YCLOUD_TEMPLATE_RECHAZO') && !empty(YCLOUD_TEMPLATE_RECHAZO)) {
-                    $wa->sendTemplate($registro['Celular'], YCLOUD_TEMPLATE_RECHAZO, 'es_MX', [
+                if (empty($res['success']) && defined('META_TEMPLATE_RECHAZO') && !empty(META_TEMPLATE_RECHAZO)) {
+                    $wa->sendTemplate($registro['Celular'], META_TEMPLATE_RECHAZO, 'es_MX', [
                         $registro['Nombre'] ?: 'Participante',
                         $motivo
                     ]);
