@@ -191,15 +191,15 @@ elseif ($method === 'POST') {
 
             // 3. Notificar al usuario por WhatsApp
             if ($recargaExitosa) {
-                $mensaje = "🎉 ¡Felicidades! Tu registro ha sido *aprobado y validado correctamente* ✅\n\n"
-                         . "Hemos realizado tu recarga de *$" . number_format($monto, 2) . " de Tiempo Aire* de forma directa a tu celular. \n"
-                         . "Folio de confirmación: *{$folio}*.\n\n"
-                         . "¡Muchas gracias por participar en *Clásicos La Fe! 🔥*";
+                $mensaje = "🎉 ¡Felicidades! Tu registro ha sido aprobado y validado correctamente\n\n"
+                         . "✅ Hemos realizado tu recarga de $" . number_format($monto, 2) . " de Tiempo Aire de forma directa a tu celular. \n"
+                         . "Folio de confirmación: {$folio}.\n\n"
+                         . "¡Muchas gracias por participar en Clásicos La Fe! 🔥";
             } else {
-                $mensaje = "🎉 ¡Felicidades! Tu registro ha sido *aprobado y validado correctamente* ✅\n\n"
-                         . "Tu recarga de *$" . number_format($monto, 2) . " de Tiempo Aire* está siendo procesada. \n"
+                $mensaje = "🎉 ¡Felicidades! Tu registro ha sido aprobado y validado correctamente\n\n"
+                         . "✅ Tu recarga de $" . number_format($monto, 2) . " de Tiempo Aire está siendo procesada. \n"
                          . "En las próximas horas verás reflejado tu saldo en tu celular. 📱\n\n"
-                         . "¡Muchas gracias por tu paciencia y por participar en *Clásicos La Fe! 🔥*";
+                         . "¡Muchas gracias por tu paciencia y por participar en Clásicos La Fe! 🔥";
             }
 
             $notificado = false;
