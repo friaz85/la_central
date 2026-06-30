@@ -284,6 +284,9 @@ class MetaWAService
         // 2. Descargar el binario usando la URL de descarga (requiere cabecera D360-API-KEY)
         // Hacemos la petición a 360dialog SIN seguir redirecciones automáticamente
         // para capturar el redirect y descargarlo de Meta directamente sin enviar cabeceras de 360dialog.
+        error_log("360dialog DEBUG: downloadUrl original = " . $downloadUrl);
+        error_log("360dialog DEBUG: D360-API-KEY = " . $this->accessToken);
+
         $ch = curl_init($downloadUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -296,14 +299,23 @@ class MetaWAService
         ]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+
+        error_log("360dialog DEBUG: First request HTTP Code = {$httpCode} | Curl Error = " . ($curlError ?: 'None'));
+        error_log("360dialog DEBUG: First request Response (truncated) = " . substr($response, 0, 1000));
 
         $realDownloadUrl = $downloadUrl;
         if ($httpCode === 302 || $httpCode === 301 || $httpCode === 307) {
             // Extraer la URL de redirección (Location)
             if (preg_match('/^Location:\s*(https?:\/\/[^\s\r\n]+)/im', $response, $matches)) {
                 $realDownloadUrl = trim($matches[1]);
+                error_log("360dialog DEBUG: Redirection detected to: " . $realDownloadUrl);
+            } else {
+                error_log("360dialog DEBUG: Redirect status returned but Location header not matched in response.");
             }
+        } else {
+            error_log("360dialog DEBUG: No redirect status. Proceeding with URL: " . $realDownloadUrl);
         }
 
         // Descargar el binario final (sin cabeceras de 360dialog para no causar 401 en Meta/AWS CDN)
@@ -315,8 +327,11 @@ class MetaWAService
         ]);
         $fileContent = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError2 = curl_error($ch);
         curl_close($ch);
         
+        error_log("360dialog DEBUG: Final download HTTP Code = {$httpCode} | Curl Error = " . ($curlError2 ?: 'None'));
+
         if ($httpCode !== 200) {
             error_log("360dialog downloadMedia: failed to download binary content from URL {$realDownloadUrl}. HTTP {$httpCode}");
             return null;
