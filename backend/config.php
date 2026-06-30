@@ -32,7 +32,9 @@ define('APP_URL', $proto . '://' . $host . '/backend');
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
 define('ADMIN_USERS', [
     'admin' => '$2y$10$6m2rOEvn.f67K.yK5pQ89.z8/J6P8/hJ9sF0B3N.v5m1c2N5v5m1c', // Se verifica con password_verify en login.php
-    'operaciones' => '$2y$10$Y1s4u9P3b2i7L6q8d7F4ui7Pb2i7L6q8d7F4ui7Pb2i7L6q8d7F4u' // Se verifica con password_verify en login.php
+    'operaciones' => '$2y$10$Y1s4u9P3b2i7L6q8d7F4ui7Pb2i7L6q8d7F4ui7Pb2i7L6q8d7F4u', // Se verifica con password_verify en login.php
+    'AnahiGA' => '$2y$12$owIdz1IgXK0Hd3mgNXrGRuVjZAO5hYObCgk3OjNr2zU43XadgFcYC',
+    'Mreyes' => '$2y$12$rlLxXRey/Zfj.99QWMtp0uvbonWQL09c5arK5294I3Bew8dm0CHoS'
 ]);
 // Para simplificar la generación dinámica de hashes si es necesario:
 // Hash para 'admin': password_hash('Cerrillera2026!', PASSWORD_DEFAULT)
