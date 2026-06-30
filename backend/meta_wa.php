@@ -299,41 +299,50 @@ class MetaWAService
         ]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         $curlError = curl_error($ch);
         curl_close($ch);
 
         error_log("360dialog DEBUG: First request HTTP Code = {$httpCode} | Curl Error = " . ($curlError ?: 'None'));
-        error_log("360dialog DEBUG: First request Response (truncated) = " . substr($response, 0, 1000));
 
-        $realDownloadUrl = $downloadUrl;
-        if ($httpCode === 302 || $httpCode === 301 || $httpCode === 307) {
+        $fileContent = null;
+
+        if ($httpCode === 200) {
+            // El binario está directamente en la respuesta. Separamos cabeceras del cuerpo binario.
+            $fileContent = substr($response, $headerSize);
+            error_log("360dialog DEBUG: Successfully downloaded binary directly. Size: " . strlen($fileContent) . " bytes");
+        } 
+        elseif ($httpCode === 302 || $httpCode === 301 || $httpCode === 307) {
+            $header = substr($response, 0, $headerSize);
             // Extraer la URL de redirección (Location)
-            if (preg_match('/^Location:\s*(https?:\/\/[^\s\r\n]+)/im', $response, $matches)) {
+            if (preg_match('/^Location:\s*(https?:\/\/[^\s\r\n]+)/im', $header, $matches)) {
                 $realDownloadUrl = trim($matches[1]);
                 error_log("360dialog DEBUG: Redirection detected to: " . $realDownloadUrl);
+                
+                // Descargar el binario final (sin cabeceras de 360dialog para no causar 401 en Meta/AWS CDN)
+                $ch = curl_init($realDownloadUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 45,
+                    CURLOPT_FOLLOWLOCATION => true,
+                ]);
+                $fileContent = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError2 = curl_error($ch);
+                curl_close($ch);
+                
+                error_log("360dialog DEBUG: Redirect download HTTP Code = {$httpCode} | Curl Error = " . ($curlError2 ?: 'None'));
+                
+                if ($httpCode !== 200) {
+                    error_log("360dialog downloadMedia: failed to download binary content from redirect URL. HTTP {$httpCode}");
+                    return null;
+                }
             } else {
-                error_log("360dialog DEBUG: Redirect status returned but Location header not matched in response.");
+                error_log("360dialog DEBUG: Redirect status returned but Location header not found.");
+                return null;
             }
         } else {
-            error_log("360dialog DEBUG: No redirect status. Proceeding with URL: " . $realDownloadUrl);
-        }
-
-        // Descargar el binario final (sin cabeceras de 360dialog para no causar 401 en Meta/AWS CDN)
-        $ch = curl_init($realDownloadUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 45,
-            CURLOPT_FOLLOWLOCATION => true,          // Aquí sí seguimos cualquier redirección del CDN de Meta
-        ]);
-        $fileContent = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError2 = curl_error($ch);
-        curl_close($ch);
-        
-        error_log("360dialog DEBUG: Final download HTTP Code = {$httpCode} | Curl Error = " . ($curlError2 ?: 'None'));
-
-        if ($httpCode !== 200) {
-            error_log("360dialog downloadMedia: failed to download binary content from URL {$realDownloadUrl}. HTTP {$httpCode}");
+            error_log("360dialog downloadMedia: unexpected HTTP code {$httpCode}");
             return null;
         }
 
