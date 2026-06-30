@@ -104,7 +104,10 @@ declare const Chart: any;
         <section class="table-card">
           <div class="table-header">
             <h3>Actividad Reciente</h3>
-            <button routerLink="/admin/registros" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 10px; cursor: pointer; font-size: 0.85rem; transition: background 0.3s;">Ver Todos los Registros</button>
+            <div style="display: flex; gap: 12px;">
+              <button (click)="exportRecentToCSV()" class="btn-reset" style="padding: 8px 16px; background: rgba(255, 209, 0, 0.15); border: 1px solid rgba(255, 209, 0, 0.3); color: #FFD100; border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.3s;">📥 Exportar CSV</button>
+              <button routerLink="/admin/registros" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 10px; cursor: pointer; font-size: 0.85rem; transition: background 0.3s;">Ver Todos los Registros</button>
+            </div>
           </div>
 
           <div class="table-wrapper">
@@ -428,6 +431,49 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       case 5: return 'process';
       default: return '';
     }
+  }
+
+  exportRecentToCSV() {
+    const data = this.stats()?.recent || [];
+    if (data.length === 0) {
+      alert('No hay datos recientes para exportar.');
+      return;
+    }
+
+    const headers = [
+      'ID Registro',
+      'Usuario',
+      'Celular',
+      'Telefonia',
+      'Estatus',
+      'Fecha Registro'
+    ];
+
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    for (const r of data) {
+      const row = [
+        r.idRegistro,
+        r.Nombre || 'Participante',
+        r.Celular || '',
+        r.Telefonia || '',
+        this.getStatusText(r.Estatus),
+        r.FechaRegistro
+      ];
+      csvRows.push(row.map(val => `"${val}"`).join(','));
+    }
+
+    const csvContent = "\uFEFF" + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `actividad_reciente_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   logout() {
