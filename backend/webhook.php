@@ -1,3 +1,4 @@
+<?php
 // webhook.php — Procesador de Webhook de Meta para WhatsApp
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
