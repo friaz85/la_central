@@ -173,12 +173,12 @@ try {
     // Permitir reiniciar el bot si el usuario escribe 'hola'
     $bodyText = strtolower(trim($inbound['text']['body'] ?? ''));
     if ($bodyText === 'hola') {
-        // Verificar límite de 2 participaciones válidas (Estatus 1, 2, 4, 5)
+        // Verificar límite de 6 participaciones válidas (Estatus 1, 2, 4, 5)
         $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
         $participaciones = (int)($rowRegs['total'] ?? 0);
 
-        if ($participaciones >= 2) {
-            $body = "¡Hola! Te informamos que ya has alcanzado el límite máximo de *2 participaciones* permitidas en esta promoción. 📱\n\n"
+        if ($participaciones >= 6) {
+            $body = "¡Hola! Te informamos que ya has alcanzado el límite máximo de *6 participaciones* permitidas en esta promoción. 📱\n\n"
                   . "Si tus registros anteriores están en proceso, en breve te daremos respuesta. ¡Muchas gracias por participar! 🙏";
             $wa->sendText($celular, $body);
             DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
@@ -458,7 +458,7 @@ try {
                 $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
                 $participaciones = (int)($rowRegs['total'] ?? 0);
  
-                if ($participaciones >= 2) {
+                if ($participaciones >= 6) {
                     $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$usrTemp['TempTelefonoRecarga']}* para tu recarga. 📱\n\n"
                           . "Tu registro pasará a validación... 🔍\n"
                           . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n"
@@ -467,7 +467,7 @@ try {
                     $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$usrTemp['TempTelefonoRecarga']}* para tu recarga. 📱\n\n"
                           . "Tu registro pasará a validación... 🔍\n"
                           . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n\n"
-                          . "Recuerda que puedes registrar hasta *2 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola* en cualquier momento. ¡Gracias por participar! 🙏";
+                          . "Recuerda que puedes registrar hasta *6 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola* en cualquier momento. ¡Gracias por participar! 🙏";
                 }
  
                 $wa->sendText($celular, $body);
@@ -522,12 +522,12 @@ try {
         $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
         $participaciones = (int)($rowRegs['total'] ?? 0);
 
-        if ($participaciones >= 2) {
-            $body = "Ya has alcanzado el límite máximo de *2 participaciones* permitidas en esta promoción. 📱\n\n"
+        if ($participaciones >= 6) {
+            $body = "Ya has alcanzado el límite máximo de *6 participaciones* permitidas en esta promoción. 📱\n\n"
                   . "Si tus registros anteriores están en proceso, en breve te daremos respuesta. ¡Muchas gracias por participar! 🙏";
         } else {
             $body = "Tu registro está en proceso de validación. 🔍 En un lapso máximo de 48hrs hábiles te daremos respuesta aquí mismo.\n\n"
-                  . "Recuerda que puedes registrar hasta *2 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola*. ¡Gracias por participar! 🙏";
+                  . "Recuerda que puedes registrar hasta *6 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola*. ¡Gracias por participar! 🙏";
         }
         $wa->sendText($celular, $body);
     }
