@@ -117,6 +117,8 @@ declare const Chart: any;
                   <th>ID</th>
                   <th>Usuario</th>
                   <th>Celular</th>
+                  <th>Código</th>
+                  <th>Evidencia</th>
                   <th>Telefonia</th>
                   <th>Estatus</th>
                   <th>Fecha Registro</th>
@@ -127,6 +129,14 @@ declare const Chart: any;
                   <td><code style="color: #ff9f0a;">#{{ r.idRegistro }}</code></td>
                   <td><span style="font-weight: 600; color: #fff;">{{ r.Nombre || 'Participante' }}</span></td>
                   <td>{{ r.Celular }}</td>
+                  <td><code class="code-badge">{{ r.CodigoUnico }}</code></td>
+                  <td>
+                    <div class="image-preview" *ngIf="r.FotoCajasUrl" (click)="openLightbox(r.FotoCajasUrl)">
+                      <img [src]="r.FotoCajasUrl" alt="Foto Cajas">
+                      <div class="hover-overlay">🔍 Ampliar</div>
+                    </div>
+                    <span *ngIf="!r.FotoCajasUrl" class="no-info">—</span>
+                  </td>
                   <td><span class="user-badge" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);">{{ r.Telefonia || '—' }}</span></td>
                   <td>
                     <span class="status-badge" [ngClass]="getStatusClass(r.Estatus)">
@@ -136,7 +146,7 @@ declare const Chart: any;
                   <td>{{ r.FechaRegistro | date:'dd/MM/yyyy HH:mm' }}</td>
                 </tr>
                 <tr *ngIf="!loading() && !stats()?.recent?.length">
-                  <td colspan="6" style="text-align: center; color: #8e8e93; padding: 30px;">
+                  <td colspan="8" style="text-align: center; color: #8e8e93; padding: 30px;">
                     Sin actividad reciente.
                   </td>
                 </tr>
@@ -145,6 +155,14 @@ declare const Chart: any;
           </div>
         </section>
       </main>
+
+      <!-- Lightbox Image Modal -->
+      <div class="lightbox" *ngIf="activeLightboxImage()" (click)="closeLightbox()">
+        <div class="lightbox-content" (click)="$event.stopPropagation()">
+          <img [src]="activeLightboxImage()" alt="Lightbox Image">
+          <button class="close-lightbox" (click)="closeLightbox()">✕</button>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -305,6 +323,90 @@ declare const Chart: any;
     .btn-reset:hover {
       background: rgba(255,255,255,0.1) !important;
     }
+    .code-badge {
+      background: rgba(255, 209, 0, 0.05);
+      border: 1px solid rgba(255, 209, 0, 0.2);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      color: #FFD100;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .image-preview {
+      position: relative;
+      width: 80px;
+      height: 60px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: inline-block;
+    }
+    .image-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+    .image-preview:hover img {
+      transform: scale(1.1);
+    }
+    .hover-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.75rem;
+      color: #fff;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .image-preview:hover .hover-overlay {
+      opacity: 1;
+    }
+    .no-info { color: #48484a; }
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+    .lightbox-content {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+    }
+    .lightbox-content img {
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    }
+    .close-lightbox {
+      position: absolute;
+      top: -40px;
+      right: 0;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+    }
   `]
 })
 export class AdminDashboardComponent implements OnInit, OnDestroy {
@@ -317,7 +419,16 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   loading = signal(true);
   startDate = '';
   endDate = '';
+  activeLightboxImage = signal<string | null>(null);
   private chart: any = null;
+
+  openLightbox(url: string) {
+    this.activeLightboxImage.set(url);
+  }
+
+  closeLightbox() {
+    this.activeLightboxImage.set(null);
+  }
 
   ngOnInit() {
     if (!(window as any).Chart) {

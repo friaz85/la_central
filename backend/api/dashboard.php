@@ -68,7 +68,7 @@ if ($method === 'GET') {
 
         // Actividad reciente
         $recent = DB::select("
-            SELECT r.idRegistro, r.Estatus, r.FechaRegistro, u.Nombre, u.Celular, t.Telefonia
+            SELECT r.idRegistro, r.Estatus, r.FechaRegistro, r.FotoCajas, r.CodigoUnico, u.Nombre, u.Celular, t.Telefonia
             FROM tblRegistro r
             JOIN tblUsuario u ON u.idUsuario = r.idUsuario
             LEFT JOIN tblTelefonia t ON t.idTelefonia = r.idTelefonia
@@ -76,6 +76,11 @@ if ($method === 'GET') {
             ORDER BY r.FechaRegistro DESC
             LIMIT 10
         ");
+
+        // Agregar URL completa de la foto
+        foreach ($recent as &$reg) {
+            $reg['FotoCajasUrl'] = !empty($reg['FotoCajas']) ? APP_URL . '/uploads/' . $reg['FotoCajas'] : '';
+        }
 
         echo json_encode([
             "success" => true,
