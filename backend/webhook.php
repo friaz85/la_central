@@ -282,7 +282,7 @@ try {
                   . "Tu código único de participación es:\n"
                   . "🔐 *{$codigoUnico}*\n\n"
                   . "Ahora sigue estos pasos:\n"
-                  . "① Anota este código en cada una de tus *3 cajetillas* de forma visible\n"
+                  . "① Anota este código (a mano) en cada una de tus *3 cajetillas* de forma visible\n"
                   . "② Coloca las *3 cajas juntas* donde se lea claramente el código en cada una\n"
                   . "③ Toma una foto y *envíala aquí* 📸";
 
