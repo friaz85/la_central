@@ -649,7 +649,8 @@ export class AdminRegistrosComponent implements OnInit {
     'Falta código escrito en las cajetillas',
     'No se aprecian las 3 cajetillas juntas',
     'Las cajas ya fueron registradas previamente',
-    'Código de participación incorrecto'
+    'Código de participación incorrecto',
+    'El código debe escribirse dentro del empaque a mano con pluma o bolígrafo'
   ];
 
   ngOnInit() {
