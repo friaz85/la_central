@@ -15,7 +15,7 @@ declare const Chart: any;
       <!-- Top Navigation Header -->
       <header class="header">
         <div class="logo-area">
-          <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
+          <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 102, 0, 0.25);">
           <div class="logo-text">
             <h2>Gatorade G15K</h2>
             <p>Panel de Administración</p>
@@ -111,7 +111,7 @@ declare const Chart: any;
           <div class="table-header">
             <h3>Actividad Reciente</h3>
             <div style="display: flex; gap: 12px;">
-              <button (click)="exportRecentToCSV()" class="btn-reset" style="padding: 8px 16px; background: rgba(255, 209, 0, 0.15); border: 1px solid rgba(255, 209, 0, 0.3); color: #FFD100; border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.3s;">📥 Exportar CSV</button>
+              <button (click)="exportRecentToCSV()" class="btn-reset" style="padding: 8px 16px; background: rgba(255, 102, 0, 0.15); border: 1px solid rgba(255, 102, 0, 0.3); color: #FF6600; border-radius: 10px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.3s;">📥 Exportar CSV</button>
               <button routerLink="/admin/registros" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 10px; cursor: pointer; font-size: 0.85rem; transition: background 0.3s;">Ver Todos los Registros</button>
             </div>
           </div>
@@ -123,19 +123,16 @@ declare const Chart: any;
                   <th>ID</th>
                   <th>Usuario</th>
                   <th>Celular</th>
-                  <th>Código</th>
                   <th>Evidencia</th>
-                  <th>Telefonia</th>
                   <th>Estatus</th>
                   <th>Fecha Registro</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let r of (stats()?.recent || [])">
-                  <td><code style="color: #ff9f0a;">#{{ r.idRegistro }}</code></td>
+                  <td><code style="color: #FF6600;">#{{ r.idRegistro }}</code></td>
                   <td><span style="font-weight: 600; color: #fff;">{{ r.Nombre || 'Participante' }}</span></td>
                   <td>{{ r.Celular }}</td>
-                  <td><code class="code-badge">{{ r.CodigoUnico }}</code></td>
                   <td>
                     <div class="image-preview" *ngIf="r.FotoCajasUrl" (click)="openLightbox(r.FotoCajasUrl)">
                       <img [src]="r.FotoCajasUrl" alt="Foto Cajas">
@@ -143,7 +140,6 @@ declare const Chart: any;
                     </div>
                     <span *ngIf="!r.FotoCajasUrl" class="no-info">—</span>
                   </td>
-                  <td><span class="user-badge" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);">{{ r.Telefonia || '—' }}</span></td>
                   <td>
                     <span class="status-badge" [ngClass]="getStatusClass(r.Estatus)">
                       {{ getStatusText(r.Estatus) }}

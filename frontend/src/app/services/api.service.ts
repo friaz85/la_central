@@ -46,6 +46,11 @@ export class ApiService {
     return this.http.get(`${this.apiBaseUrl}/api/registros.php`, { headers: this.getAuthHeaders() });
   }
 
+  checkFolio(folio: string, excludeId: number = 0): Observable<any> {
+    return this.http.get(`${this.apiBaseUrl}/api/registros.php?check_folio=${encodeURIComponent(folio)}&exclude_id=${excludeId}`, { headers: this.getAuthHeaders() });
+  }
+
+
   aprobarRegistro(idRegistro: number, payload: any): Observable<any> {
     return this.http.post(`${this.apiBaseUrl}/api/registros.php`, {
       idRegistro,

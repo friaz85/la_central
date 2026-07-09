@@ -34,7 +34,7 @@ interface Registro {
       <!-- Top Navigation Header -->
       <header class="header">
         <div class="logo-area">
-          <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
+          <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 102, 0, 0.25);">
           <div class="logo-text">
             <h2>Gatorade G15K</h2>
             <p>Panel de Administración</p>
@@ -86,11 +86,9 @@ interface Registro {
               <thead>
                 <tr>
                   <th>Usuario / Celular</th>
-                  <th>Código Asignado</th>
                   <th>Foto Evidencia</th>
                   <th>Fecha Registro</th>
                   <th>Estatus</th>
-                  <th>Recarga Info</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -102,7 +100,6 @@ interface Registro {
                       <span class="phone">{{ reg.Celular }}</span>
                     </div>
                   </td>
-                  <td><code class="code-badge">{{ reg.CodigoUnico }}</code></td>
                   <td>
                     <div class="image-preview" (click)="openLightbox(reg.FotoCajasUrl)">
                       <img [src]="reg.FotoCajasUrl" alt="Foto Cajas">
@@ -116,16 +113,8 @@ interface Registro {
                     </span>
                   </td>
                   <td>
-                    <div class="recharge-cell" *ngIf="reg.Estatus === 4 || reg.Estatus === 5">
-                      <span class="carrier" *ngIf="reg.FolioRecarga">Folio: {{ reg.FolioRecarga }}</span>
-                      <span class="phone" *ngIf="reg.TelefonoRecarga">A: {{ reg.TelefonoRecarga }}</span>
-                      <span class="pending-lbl" *ngIf="reg.Estatus === 5">Procesando...</span>
-                    </div>
-                    <span class="no-info" *ngIf="reg.Estatus !== 4 && reg.Estatus !== 5">—</span>
-                  </td>
-                  <td>
                     <div class="action-buttons" *ngIf="reg.Estatus === 1">
-                      <button (click)="openValidationModal(reg)" class="btn-action approve-btn" style="background-color: #FFD100; color: #111;" title="Validar Registro">
+                      <button (click)="openValidationModal(reg)" class="btn-action approve-btn" style="background-color: #FF6600; color: #ffffff;" title="Validar Registro">
                         ✓ Validar
                       </button>
                     </div>
@@ -201,7 +190,10 @@ interface Registro {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                   <div>
                     <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2;">Folio Ticket *</label>
-                    <input type="text" [(ngModel)]="form.folio" placeholder="Ej: T-12345" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box;">
+                    <input type="text" [(ngModel)]="form.folio" (blur)="onFolioBlur()" placeholder="Ej: T-12345" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box;">
+                    <div *ngIf="folioDuplicado()" style="color: #ff453a; font-size: 0.75rem; margin-top: 4px; font-weight: 600;">
+                      ⚠️ Este folio ya existe en un registro aprobado.
+                    </div>
                   </div>
                   <div>
                     <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2;">Fecha Ticket *</label>
@@ -675,6 +667,7 @@ export class AdminRegistrosComponent implements OnInit {
   ticketImg = signal('');
   saving = signal(false);
   accion = 'aprobar';
+  folioDuplicado = signal(false);
 
   form = {
     folio: '',
@@ -684,6 +677,7 @@ export class AdminRegistrosComponent implements OnInit {
     producto: '',
     motivo: ''
   };
+
 
   catalogs: any = { cadenas: [], productos: [] };
 
@@ -755,6 +749,7 @@ export class AdminRegistrosComponent implements OnInit {
     this.currentReg.set(reg);
     this.accion = 'aprobar';
     this.ticketImg.set(reg.FotoCajasUrl);
+    this.folioDuplicado.set(false);
     this.form = {
       folio: '',
       fecha: '',
@@ -770,12 +765,31 @@ export class AdminRegistrosComponent implements OnInit {
     this.currentReg.set(null);
   }
 
+  onFolioBlur() {
+    const folio = this.form.folio.trim();
+    const reg = this.currentReg();
+    if (!folio || !reg) {
+      this.folioDuplicado.set(false);
+      return;
+    }
+
+    this.api.checkFolio(folio, reg.idRegistro).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.folioDuplicado.set(res.exists);
+        }
+      },
+      error: () => this.folioDuplicado.set(false)
+    });
+  }
+
   saveValidation() {
     const reg = this.currentReg();
     if (!reg) return;
 
     if (this.accion === 'aprobar') {
       if (!this.form.folio.trim()) { alert('El Folio del Ticket es requerido'); return; }
+      if (this.folioDuplicado()) { alert('Este folio ya existe en otro registro aprobado.'); return; }
       if (!this.form.fecha) { alert('La Fecha del Ticket es requerida'); return; }
       if (this.form.monto === '') { alert('El Monto del Ticket es requerido'); return; }
       if (Number(this.form.monto) < 0) { alert('El Monto del Ticket no puede ser negativo'); return; }

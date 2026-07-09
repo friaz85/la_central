@@ -11,6 +11,25 @@ require_once __DIR__ . '/../ycloud.php';
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+    // Verificar si el folio ya está en uso en registros aprobados (llamado por blur en Angular)
+    if (isset($_GET['check_folio'])) {
+        $folio = trim($_GET['check_folio']);
+        $excludeId = isset($_GET['exclude_id']) ? (int)$_GET['exclude_id'] : 0;
+        
+        try {
+            $exists = DB::selectOne(
+                "SELECT 1 FROM tblRegistro WHERE FolioTicket = ? AND Estatus = 2 AND Activo = 1 AND idRegistro != ?",
+                [$folio, $excludeId]
+            );
+            echo json_encode(["success" => true, "exists" => $exists ? true : false]);
+            exit;
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["error" => "Error al verificar folio: " . $e->getMessage()]);
+            exit;
+        }
+    }
+
     // Listar todos los registros
     try {
         $query = "SELECT r.*, u.Celular, u.Nombre as NombreUsuario,
@@ -93,14 +112,14 @@ elseif ($method === 'POST') {
                 exit;
             }
 
-            // Validar que el Folio no esté duplicado
+            // Validar que el Folio (FolioTicket) no esté duplicado en registros Aprobados (Estatus = 2)
             $folioExists = DB::selectOne(
-                "SELECT 1 FROM tblRegistro WHERE FolioTicket = ? AND Activo = 1 AND idRegistro != ?",
+                "SELECT 1 FROM tblRegistro WHERE FolioTicket = ? AND Estatus = 2 AND Activo = 1 AND idRegistro != ?",
                 [$folioTicket, $idRegistro]
             );
             if ($folioExists) {
                 http_response_code(409);
-                echo json_encode(["error" => "El folio '{$folioTicket}' ya existe en otro registro. Verifica el número de folio."]);
+                echo json_encode(["error" => "El folio '{$folioTicket}' ya existe en otro registro aprobado. Verifica el número de folio."]);
                 exit;
             }
 
@@ -113,10 +132,14 @@ elseif ($method === 'POST') {
                     MontoTicket = ?, 
                     idCadena = ?, 
                     idProducto = ?, 
+                    CodigoUnico = ?, 
+                    Monto = ?, 
                     FechaValidacion = NOW() 
                  WHERE idRegistro = ?",
-                [$folioTicket, $fechaTicket, $montoTicket, $idCadena, $idProducto, $idRegistro]
+                [$folioTicket, $fechaTicket, $montoTicket, $idCadena, $idProducto, $folioTicket, $montoTicket, $idRegistro]
             );
+
+
 
             // Enviar mensaje de aprobación de Gatorade G15K
             $mensaje = "🎉 ¡Felicidades! Tu ticket de compra ha sido validado correctamente.\n\n"
