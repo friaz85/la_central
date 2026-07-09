@@ -9,9 +9,9 @@ ini_set('error_log', __DIR__ . '/php_error.log');
 
 // Configuración de la Base de Datos (SiteGround)
 define('DB_HOST', 'localhost');
-define('DB_USER', 'uqvv7yh80ny7a');
-define('DB_PASS', '&om1^7^1icg,');
-define('DB_NAME', 'db3nb29ylqgkun');
+define('DB_USER', 'u919bgucjtnc4');
+define('DB_PASS', '{1A1sN(k{tde');
+define('DB_NAME', 'db5iwnlmwudfbp');
 
 // Configuración de YCloud (API WhatsApp)
 define('YCLOUD_API_KEY', 'b61e82606d294400975813a06184830d');
@@ -26,7 +26,7 @@ define('TAECEL_NIP', 'f82dc3d9102a7591fd37a5593dc5ab17T44ui7Pib2');
 define('TAECEL_API_URL', 'https://taecel.com/app/api/');
 
 // Configuración de la App
-$host = $_SERVER['HTTP_HOST'] ?? 'clasicoslafe.qrewards.com.mx';
+$host = $_SERVER['HTTP_HOST'] ?? 'g15k.qrewards.com.mx';
 $proto = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
 define('APP_URL', $proto . '://' . $host . '/backend');
 define('UPLOAD_DIR', __DIR__ . '/uploads/');

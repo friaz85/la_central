@@ -1,18 +1,16 @@
 <?php
-// webhook.php — Procesador de Webhook de Meta para WhatsApp
+// webhook.php — Procesador de Webhook de YCloud para WhatsApp (Gatorade G15K)
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/meta_wa.php';
+require_once __DIR__ . '/ycloud.php';
 
-// Validar método GET (Verificación de Webhook para la consola de Meta Developers)
+// Validar método GET (Verificación opcional para webhooks si se requiere)
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $verifyToken = defined('META_WEBHOOK_VERIFY_TOKEN') ? META_WEBHOOK_VERIFY_TOKEN : 'la_central_meta_token_verify';
-    if (isset($_GET['hub_mode']) && $_GET['hub_mode'] === 'subscribe' && isset($_GET['hub_verify_token']) && $_GET['hub_verify_token'] === $verifyToken) {
+    if (isset($_GET['hub_challenge'])) {
         echo $_GET['hub_challenge'];
         exit;
     }
-    http_response_code(400);
-    echo "Firma de verificación inválida";
+    echo "Webhook activo";
     exit;
 }
 
@@ -27,8 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $rawBody = file_get_contents('php://input');
 $data = json_decode($rawBody, true);
 
-// Log raw body for debugging inbound media structure
-error_log("Webhook Raw Body: " . $rawBody);
+error_log("YCloud Webhook Raw Body: " . $rawBody);
 
 if (!$data) {
     http_response_code(400);
@@ -36,34 +33,44 @@ if (!$data) {
     exit;
 }
 
-// Validar firma del webhook si está configurada en Meta (X-Hub-Signature-256)
-if (defined('META_APP_SECRET') && !empty(META_APP_SECRET)) {
-    $signatureHeader = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
-    if (preg_match('/sha256=([a-f0-9]+)/', $signatureHeader, $matches)) {
-        $signature = $matches[1];
-        $expectedSignature = hash_hmac('sha256', $rawBody, META_APP_SECRET);
-        if (!hash_equals($expectedSignature, $signature)) {
+// Validar firma del webhook de YCloud si está configurada
+if (defined('YCLOUD_WEBHOOK_SECRET') && !empty(YCLOUD_WEBHOOK_SECRET)) {
+    $signatureHeader = $_SERVER['HTTP_X_YCLOUD_SIGNATURE'] ?? '';
+    if (preg_match('/t=(\d+),v1=([a-f0-9]+)/', $signatureHeader, $matches)) {
+        $timestamp = $matches[1];
+        $signature = $matches[2];
+        
+        // Validar ventana de tiempo (5 minutos)
+        if (abs(time() - $timestamp) < 300) {
+            $signedPayload = $timestamp . '.' . $rawBody;
+            $expectedSignature = hash_hmac('sha256', $signedPayload, YCLOUD_WEBHOOK_SECRET);
+            if (!hash_equals($expectedSignature, $signature)) {
+                http_response_code(401);
+                error_log("YCloud webhook signature mismatch");
+                exit;
+            }
+        } else {
             http_response_code(401);
-            error_log("Meta webhook signature mismatch");
+            error_log("YCloud webhook timestamp too old");
             exit;
         }
-    } else {
-        http_response_code(401);
-        error_log("Missing X-Hub-Signature-256 header");
-        exit;
     }
 }
 
-// Responder HTTP 200 inmediatamente a Meta
+// Si viene dentro de un evento de YCloud, extraer el objeto 'whatsapp'
+if (isset($data['whatsapp'])) {
+    $data = $data['whatsapp'];
+}
+
+// Responder HTTP 200 inmediatamente
 http_response_code(200);
 echo json_encode(["status" => "received"]);
 
-// Procesar el mensaje en segundo plano (después de cerrar la conexión)
+// Procesar en segundo plano si está disponible
 if (function_exists('fastcgi_finish_request')) {
     fastcgi_finish_request();
 }
 
-// Normalizar la carga útil de Meta al formato que espera nuestro bot ($inbound)
 $inbound = null;
 
 if (isset($data['object']) && $data['object'] === 'whatsapp_business_account') {
@@ -100,20 +107,13 @@ if (isset($data['object']) && $data['object'] === 'whatsapp_business_account') {
                         'title' => $message['interactive']['button_reply']['title'] ?? ''
                     ]
                 ];
-            } elseif ($interactiveType === 'list_reply') {
-                $inbound['interactive'] = [
-                    'list_reply' => [
-                        'id' => $message['interactive']['list_reply']['id'] ?? '',
-                        'title' => $message['interactive']['list_reply']['title'] ?? '',
-                        'description' => $message['interactive']['list_reply']['description'] ?? ''
-                    ]
-                ];
             }
         } elseif ($msgType === 'image') {
             $inbound['image'] = [
                 'id' => $message['image']['id'] ?? '',
                 'mime_type' => $message['image']['mime_type'] ?? 'image/jpeg',
-                'caption' => $message['image']['caption'] ?? ''
+                'caption' => $message['image']['caption'] ?? '',
+                'link' => $message['image']['link'] ?? ''
             ];
         }
     }
@@ -133,25 +133,22 @@ if (empty($celular)) {
 }
 
 if (!empty($msgId)) {
-    // Verificar duplicados para evitar procesamiento paralelo/reintentos
+    // Evitar procesamiento paralelo/reintentos
     $existe = DB::selectOne("SELECT 1 FROM tblLog WHERE Accion = 'WEBHOOK_PROCESSED' AND Descripcion = ?", [$msgId]);
     if ($existe) {
         error_log("Webhook: message {$msgId} already processed, skipping retry.");
         exit;
     }
-    // Registrar procesamiento para bloquear reintentos
     DB::execute("INSERT INTO tblLog (Accion, Descripcion) VALUES ('WEBHOOK_PROCESSED', ?)", [$msgId]);
 }
 
-// Inicializar el servicio de Meta WA
-$wa = new MetaWAService();
+$wa = new YCloudService();
 
 try {
-    // Buscar o crear usuario en la BD
+    // Buscar o crear usuario
     $usuario = DB::selectOne("SELECT * FROM tblUsuario WHERE Celular = ?", [$celular]);
 
     if (!$usuario) {
-        // Crear usuario nuevo
         DB::execute("INSERT INTO tblUsuario (Celular, Nombre, PasoBot) VALUES (?, ?, 'BIENVENIDA')", [$celular, $userName]);
         $userId = DB::lastInsertId();
         $usuario = [
@@ -159,54 +156,35 @@ try {
             'Celular' => $celular,
             'Nombre' => $userName,
             'PasoBot' => 'BIENVENIDA',
-            'TerminosAceptados' => 0,
-            'CodigoParticipacion' => null
+            'TerminosAceptados' => 0
         ];
-    } else {
-        // Si el usuario existe pero no tiene nombre guardado o tiene el default, y ahora tenemos un nombre real
-        if (($usuario['Nombre'] === null || $usuario['Nombre'] === '' || $usuario['Nombre'] === 'Participante') && $userName !== 'Participante') {
-            DB::execute("UPDATE tblUsuario SET Nombre = ? WHERE idUsuario = ?", [$userName, $usuario['idUsuario']]);
-            $usuario['Nombre'] = $userName;
-        }
     }
 
-    // Permitir reiniciar el bot si el usuario escribe 'hola'
     $bodyText = strtolower(trim($inbound['text']['body'] ?? ''));
+
+    // Reiniciar bot si el usuario escribe 'hola'
     if ($bodyText === 'hola') {
-        // Verificar límite de 6 participaciones válidas (Estatus 1, 2, 4, 5)
-        $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
-        $participaciones = (int)($rowRegs['total'] ?? 0);
-
-        if ($participaciones >= 6) {
-            $body = "¡Hola! Te informamos que ya has alcanzado el límite máximo de *6 participaciones* permitidas en esta promoción. 📱\n\n"
-                  . "Si tus registros anteriores están en proceso, en breve te daremos respuesta. ¡Muchas gracias por participar! 🙏";
-            $wa->sendText($celular, $body);
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            exit;
-        }
-
         DB::execute("UPDATE tblUsuario SET PasoBot = 'BIENVENIDA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
         $usuario['PasoBot'] = 'BIENVENIDA';
     }
 
     $pasoActual = $usuario['PasoBot'];
 
-    // Lógica del Bot Conversacional
     if ($pasoActual === 'BIENVENIDA') {
-        // Mensaje de bienvenida + Términos y Condiciones
-        $body = "¡Hola! " . ($usuario['Nombre'] ?: 'participante') . " 👋 Bienvenido a la promoción *Clásicos La Fe* 🔥\n\n"
-              . "¡Llevarte una recarga de *Tiempo Aire nunca fue tan fácil*! 📱\n"
-              . "Para participar necesitas tener *3 cajas de Cerillos Clásicos La Fe.*\n\n"
-              . "Antes de continuar, por favor lee nuestros *Términos y Condiciones*:\n"
-              . "📄 https://qrewards.com.mx/clasicoslafe\n\n"
-              . "¿Aceptas los términos y condiciones?";
+        $body = "🏆 ¡Bienvenido(a) a la promoción *G15K* de *Gatorade®*!\n\n"
+              . "Participa comprando *$95.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
+              . "Para continuar, sigue las instrucciones que te compartiremos a continuación.\n\n"
+              . "Antes de continuar, es necesario que aceptes nuestras Bases, Términos y Condiciones, así como el Aviso de Privacidad.\n"
+              . "📄 Bases y Términos: https://g15k.qrewards.com.mx/bases\n"
+              . "🔒 Aviso de Privacidad: https://g15k.qrewards.com.mx/privacidad\n\n"
+              . "¿Aceptas los Bases, Términos y Condiciones, así como el Aviso de Privacidad de la promoción?";
 
         $buttons = [
-            ['id' => 'tyc_si', 'title' => 'Aceptar (SÍ)'],
-            ['id' => 'tyc_no', 'title' => 'Rechazar (NO)']
+            ['id' => 'tyc_si', 'title' => 'Sí, acepto'],
+            ['id' => 'tyc_no', 'title' => 'No acepto']
         ];
 
-        $wa->sendButtons($celular, $body, $buttons, "Clásicos La Fe");
+        $wa->sendButtons($celular, $body, $buttons, "Gatorade G15K");
         DB::execute("UPDATE tblUsuario SET PasoBot = 'TERMINOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
     } 
     elseif ($pasoActual === 'TERMINOS') {
@@ -214,205 +192,98 @@ try {
         if ($msgType === 'interactive') {
             $userResponse = $inbound['interactive']['button_reply']['id'] ?? '';
         } else {
-            $textBody = strtolower(trim($inbound['text']['body'] ?? ''));
-            if ($textBody === 'si' || $textBody === 'sí' || $textBody === 'aceptar') $userResponse = 'tyc_si';
-            if ($textBody === 'no' || $textBody === 'rechazar') $userResponse = 'tyc_no';
+            if ($bodyText === 'si' || $bodyText === 'sí' || $bodyText === 'aceptar' || $bodyText === '1') $userResponse = 'tyc_si';
+            if ($bodyText === 'no' || $bodyText === 'rechazar' || $bodyText === '2') $userResponse = 'tyc_no';
         }
 
         if ($userResponse === 'tyc_si') {
-            // Aceptó Términos
-            DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1 WHERE idUsuario = ?", [$usuario['idUsuario']]);
-
-            // Enviar video tutorial nativo por YCloud
-            $videoUrl = "https://clasicoslafe.qrewards.com.mx/assets/video.mp4";
-            $wa->sendVideo($celular, $videoUrl, "Video tutorial — Clásicos La Fe");
-            
-            // Esperar 4 segundos para que Meta procese el video pesado antes de enviar el mensaje de texto
-            sleep(4);
-
-            $body = "¡Perfecto, gracias por aceptar! 🙌\n"
-                  . "Antes de registrarte, mira el breve video que te acabamos de enviar con todo lo que necesitas hacer 👆\n\n"
-                  . "En el video verás:\n"
-                  . "📌 Cómo localizar el *código QR* dentro del empaque\n"
-                  . "📌 Cómo *marcar tus 3 cajetillas* con tu código único\n"
-                  . "📌 Cómo *tomar y enviar la foto* correctamente\n\n"
-                  . "Cuando termines, presiona el botón:";
-
-            $buttons = [
-                ['id' => 'video_continuar', 'title' => 'CONTINUAR']
-            ];
-
-            $wa->sendButtons($celular, $body, $buttons, "Instrucciones");
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'VIDEO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1, PasoBot = 'INGRESO_NOMBRE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $body = "Perfecto. Para comenzar tu registro, por favor comparte tu *nombre completo* tal como aparece en tu identificación oficial:";
+            $wa->sendText($celular, $body);
         } 
         elseif ($userResponse === 'tyc_no') {
-            // Rechazó Términos
             $body = "Entendemos tu decisión. 😊\n"
-                  . "Si cambias de opinión puedes volver a escribirnos cuando quieras.\n"
+                  . "Si cambias de opinión, puedes volver a escribirnos *Hola* en cualquier momento.\n"
                   . "¡Hasta pronto! 👋";
             $wa->sendText($celular, $body);
             DB::execute("UPDATE tblUsuario SET PasoBot = 'BIENVENIDA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
         } 
         else {
-            // Respuesta no válida en este paso, reenviar botones
-            $body = "¿Aceptas los Términos y Condiciones para participar?\n"
-                  . "📄 https://qrewards.com.mx/clasicoslafe";
+            $body = "¿Aceptas los Bases, Términos y Condiciones, así como el Aviso de Privacidad de la promoción?\n"
+                  . "📄 https://g15k.qrewards.com.mx/bases";
             $buttons = [
-                ['id' => 'tyc_si', 'title' => 'Aceptar (SÍ)'],
-                ['id' => 'tyc_no', 'title' => 'Rechazar (NO)']
+                ['id' => 'tyc_si', 'title' => 'Sí, acepto'],
+                ['id' => 'tyc_no', 'title' => 'No acepto']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Clásicos La Fe");
+            $wa->sendButtons($celular, $body, $buttons, "Términos y Condiciones");
         }
     } 
-    elseif ($pasoActual === 'VIDEO') {
+    elseif ($pasoActual === 'INGRESO_NOMBRE') {
+        $nameInput = trim($inbound['text']['body'] ?? '');
+        if (!empty($nameInput) && strlen($nameInput) > 3) {
+            DB::execute("UPDATE tblUsuario SET TempNombre = ?, PasoBot = 'INGRESO_EMAIL' WHERE idUsuario = ?", [$nameInput, $usuario['idUsuario']]);
+            $body = "Gracias, por favor comparte tu *correo electrónico*:";
+            $wa->sendText($celular, $body);
+        } else {
+            $body = "Por favor, escribe tu nombre completo tal como aparece en tu identificación oficial:";
+            $wa->sendText($celular, $body);
+        }
+    }
+    elseif ($pasoActual === 'INGRESO_EMAIL') {
+        $emailInput = trim($inbound['text']['body'] ?? '');
+        if (filter_var($emailInput, FILTER_VALIDATE_EMAIL)) {
+            DB::execute("UPDATE tblUsuario SET TempEmail = ?, PasoBot = 'INGRESO_ESTADO' WHERE idUsuario = ?", [$emailInput, $usuario['idUsuario']]);
+            
+            $body = "Por último, indícanos en donde resides:\n"
+                  . "1️⃣ Ciudad de México o Estado de México\n"
+                  . "2️⃣ Otro estado";
+            $buttons = [
+                ['id' => 'res_1', 'title' => 'CDMX / EDOMEX'],
+                ['id' => 'res_2', 'title' => 'Otro estado']
+            ];
+            $wa->sendButtons($celular, $body, $buttons, "Residencia");
+        } else {
+            $body = "El correo electrónico ingresado no es válido. ❌\nPor favor, comparte un correo electrónico válido (ejemplo: usuario@correo.com):";
+            $wa->sendText($celular, $body);
+        }
+    }
+    elseif ($pasoActual === 'INGRESO_ESTADO') {
         $userResponse = '';
         if ($msgType === 'interactive') {
             $userResponse = $inbound['interactive']['button_reply']['id'] ?? '';
         } else {
-            $textBody = strtolower(trim($inbound['text']['body'] ?? ''));
-            if ($textBody === 'continuar') $userResponse = 'video_continuar';
+            if ($bodyText === '1' || strpos($bodyText, 'ciudad') !== false || strpos($bodyText, 'méxico') !== false || strpos($bodyText, 'mexico') !== false) $userResponse = 'res_1';
+            if ($bodyText === '2' || strpos($bodyText, 'otro') !== false || strpos($bodyText, 'estado') !== false) $userResponse = 'res_2';
         }
 
-        if ($userResponse === 'video_continuar') {
-            // Generar código único alfanumérico
-            $codigoUnico = generateUniqueCode();
-            DB::execute("UPDATE tblUsuario SET CodigoParticipacion = ? WHERE idUsuario = ?", [$codigoUnico, $usuario['idUsuario']]);
+        if ($userResponse === 'res_1' || $userResponse === 'res_2') {
+            $estadoStr = ($userResponse === 'res_1') ? "Ciudad de México / Estado de México" : "Otro estado";
+            DB::execute("UPDATE tblUsuario SET TempEstado = ?, PasoBot = 'CONFIRMACION_DATOS' WHERE idUsuario = ?", [$estadoStr, $usuario['idUsuario']]);
 
-            $body = "¡Vamos allá! 🚀\n"
-                  . "Tu código único de participación es:\n"
-                  . "🔐 *{$codigoUnico}*\n\n"
-                  . "Ahora sigue estos pasos:\n"
-                  . "① Anota este código (a mano) en cada una de tus *3 cajetillas* de forma visible\n"
-                  . "② Coloca las *3 cajas juntas* donde se lea claramente el código en cada una\n"
-                  . "③ Toma una foto y *envíala aquí* 📸";
-
-            $wa->sendText($celular, $body);
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-        } 
-        else {
-            // Reenviar botón Continuar
-            $body = "Cuando termines de ver el video tutorial, por favor presiona el botón CONTINUAR.";
-            $buttons = [
-                ['id' => 'video_continuar', 'title' => 'CONTINUAR']
-            ];
-            $wa->sendButtons($celular, $body, $buttons, "Instrucciones");
-        }
-    } 
-    elseif ($pasoActual === 'FOTO_PENDIENTE') {
-        if ($msgType === 'image') {
-            $imageInfo = $inbound['image'] ?? null;
-            $mediaId = $imageInfo['id'] ?? '';
+            // Obtener datos temporales para mostrar
+            $usrTemp = DB::selectOne("SELECT TempNombre, TempEmail, TempEstado FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
             
-            if (!empty($mediaId)) {
-                $ext = 'jpg';
-                if (($imageInfo['mime_type'] ?? '') === 'image/png') {
-                    $ext = 'png';
-                }
-                
-                // Nombre único del archivo local
-                $filename = "cerrillera_" . $usuario['idUsuario'] . "_" . time() . "." . $ext;
-                $mediaSource = !empty($imageInfo['link']) ? $imageInfo['link'] : $mediaId;
-                $savedFile = $wa->downloadMedia($mediaSource, $filename);
-
-                if ($savedFile) {
-                    // Guardar temporalmente en tblUsuario (NO en tblRegistro todavía)
-                    DB::execute(
-                        "UPDATE tblUsuario SET TempFotoCajas = ? WHERE idUsuario = ?",
-                        [$savedFile, $usuario['idUsuario']]
-                    );
-
-                    // Enviar lista interactiva de compañías telefónicas
-                    $bodyList = "✅ ¡Foto recibida!\n\nPor favor, selecciona tu compañía telefónica para poder procesar tu recarga de Tiempo Aire cuando tu registro sea validado:";
-                    $rowsList = [
-                        ['id' => 'tel_1', 'title' => 'Telcel'],
-                        ['id' => 'tel_2', 'title' => 'AT&T'],
-                        ['id' => 'tel_3', 'title' => 'Unefon'],
-                        ['id' => 'tel_4', 'title' => 'Movistar'],
-                        ['id' => 'tel_5', 'title' => 'Virgin Mobile']
-                    ];
-
-                    $wa->sendList($celular, $bodyList, "Ver Compañías", $rowsList, "Compañía Telefónica");
-                    DB::execute("UPDATE tblUsuario SET PasoBot = 'SELECCION_TELEFONIA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-                } else {
-                    $wa->sendText($celular, "Hubo un error al procesar tu imagen. Por favor, intenta enviarla nuevamente. 📸");
-                }
-            } else {
-                $wa->sendText($celular, "No pudimos obtener la imagen. Por favor, intenta de nuevo. 📸");
-            }
-        } else {
-            // No envió imagen
-            $codigoUnico = $usuario['CodigoParticipacion'];
-            $body = "Por favor, envía la foto de tus *3 cajetillas de Cerillos Clásicos La Fe* marcadas claramente con tu código único: *{$codigoUnico}* 📸";
-            $wa->sendText($celular, $body);
-        }
-    } 
-    elseif ($pasoActual === 'SELECCION_TELEFONIA') {
-        $selectedId = '';
-        if ($msgType === 'interactive') {
-            $selectedId = $inbound['interactive']['list_reply']['id'] ?? '';
-        }
- 
-        if (strpos($selectedId, 'tel_') === 0) {
-            $idTelefonia = (int)str_replace('tel_', '', $selectedId);
-            
-            // Guardar temporalmente en tblUsuario (NO en tblRegistro todavía)
-            DB::execute(
-                "UPDATE tblUsuario SET TempIdTelefonia = ? WHERE idUsuario = ?",
-                [$idTelefonia, $usuario['idUsuario']]
-            );
- 
-            $body = "¡Excelente elección! 📱\n\n"
-                  . "Ahora, por favor escribe el *número celular a 10 dígitos* al cual deseas que le realicemos la recarga telefónica:";
- 
-            $wa->sendText($celular, $body);
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_TELEFONO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-        } else {
-            // No seleccionó de la lista, reenviar la lista
-            $bodyList = "Por favor, utiliza el botón de abajo para seleccionar tu compañía telefónica. Esto es necesario para poder recargar tu celular:";
-            $rowsList = [
-                ['id' => 'tel_1', 'title' => 'Telcel'],
-                ['id' => 'tel_2', 'title' => 'AT&T'],
-                ['id' => 'tel_3', 'title' => 'Unefon'],
-                ['id' => 'tel_4', 'title' => 'Movistar'],
-                ['id' => 'tel_5', 'title' => 'Virgin Mobile']
-            ];
-            $wa->sendList($celular, $bodyList, "Ver Compañías", $rowsList, "Compañía Telefónica");
-        }
-    }
-    elseif ($pasoActual === 'INGRESO_TELEFONO') {
-        $textBody = preg_replace('/\D/', '', $inbound['text']['body'] ?? '');
- 
-        if (strlen($textBody) === 10) {
-            // Guardar temporalmente el número en tblUsuario
-            DB::execute(
-                "UPDATE tblUsuario SET TempTelefonoRecarga = ? WHERE idUsuario = ?",
-                [$textBody, $usuario['idUsuario']]
-            );
-
-            // Obtener los datos temporales de tblUsuario para la confirmación
-            $usrTemp = DB::selectOne("SELECT TempIdTelefonia FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            $idTelefonia = (int)($usrTemp['TempIdTelefonia'] ?? 0);
-
-            $telefoniaRow = DB::selectOne("SELECT Telefonia FROM tblTelefonia WHERE idTelefonia = ?", [$idTelefonia]);
-            $nombreTelefonia = $telefoniaRow['Telefonia'] ?? 'Compañía';
-
-            $body = "🔍 *Por favor, confirma tus datos antes de continuar:*\n\n"
-                  . "📱 *Compañía:* {$nombreTelefonia}\n"
-                  . "📞 *Número de Recarga:* {$textBody}\n\n"
-                  . "¿Los datos son correctos?";
+            $body = "Por favor verifica que tus datos sean correctos:\n\n"
+                  . "👤 *Nombre:* {$usrTemp['TempNombre']}\n"
+                  . "📱 *Teléfono:* {$celular}\n"
+                  . "📧 *Correo:* {$usrTemp['TempEmail']}\n"
+                  . "📍 *Estado:* {$usrTemp['TempEstado']}\n\n"
+                  . "¿La información es correcta?";
 
             $buttons = [
-                ['id' => 'confirm_si', 'title' => 'Sí, Confirmar'],
-                ['id' => 'confirm_cambiar_tel', 'title' => 'Cambiar Número'],
-                ['id' => 'confirm_cambiar_comp', 'title' => 'Cambiar Compañía']
+                ['id' => 'confirm_si', 'title' => 'Sí, es correcta'],
+                ['id' => 'confirm_no', 'title' => 'No, deseo corregirla']
             ];
-
-            $wa->sendButtons($celular, $body, $buttons, "Confirmación");
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'CONFIRMACION_DATOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $wa->sendButtons($celular, $body, $buttons, "Verificación");
         } else {
-            $body = "El número ingresado no es válido. ❌\n\n"
-                  . "Por favor, escribe el *número celular a 10 dígitos* (solo números, ej: 5512345678) para tu recarga:";
-            $wa->sendText($celular, $body);
+            $body = "Por favor, indícanos en donde resides utilizando los botones:\n"
+                  . "1️⃣ Ciudad de México o Estado de México\n"
+                  . "2️⃣ Otro estado";
+            $buttons = [
+                ['id' => 'res_1', 'title' => 'CDMX / EDOMEX'],
+                ['id' => 'res_2', 'title' => 'Otro estado']
+            ];
+            $wa->sendButtons($celular, $body, $buttons, "Residencia");
         }
     }
     elseif ($pasoActual === 'CONFIRMACION_DATOS') {
@@ -420,138 +291,94 @@ try {
         if ($msgType === 'interactive') {
             $userResponse = $inbound['interactive']['button_reply']['id'] ?? '';
         } else {
-            $textBody = strtolower(trim($inbound['text']['body'] ?? ''));
-            if ($textBody === 'si' || $textBody === 'sí' || $textBody === 'confirmar') $userResponse = 'confirm_si';
-            if (strpos($textBody, 'número') !== false || strpos($textBody, 'numero') !== false) $userResponse = 'confirm_cambiar_tel';
-            if (strpos($textBody, 'compañía') !== false || strpos($textBody, 'compañia') !== false || strpos($textBody, 'comp') !== false) $userResponse = 'confirm_cambiar_comp';
+            if ($bodyText === 'si' || $bodyText === 'sí' || $bodyText === 'correcta' || $bodyText === '1') $userResponse = 'confirm_si';
+            if ($bodyText === 'no' || $bodyText === 'corregir' || $bodyText === '2') $userResponse = 'confirm_no';
         }
 
         if ($userResponse === 'confirm_si') {
-            // Obtener los datos temporales de tblUsuario
-            $usrTemp = DB::selectOne("SELECT TempFotoCajas, TempIdTelefonia, TempTelefonoRecarga, CodigoParticipacion FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
- 
-            if ($usrTemp && !empty($usrTemp['TempFotoCajas']) && !empty($usrTemp['TempIdTelefonia']) && !empty($usrTemp['TempTelefonoRecarga'])) {
-                // Generar token único para el registro
-                $tokenCanje = hash('sha256', $celular . time() . uniqid());
- 
-                // Insertar el registro final con Estatus = 1 (Por validar / Esperando Validación)
-                DB::execute(
-                    "INSERT INTO tblRegistro (idUsuario, Token, FotoCajas, CodigoUnico, idTelefonia, TelefonoRecarga, Estatus) 
-                     VALUES (?, ?, ?, ?, ?, ?, 1)",
-                    [
-                        $usuario['idUsuario'],
-                        $tokenCanje,
-                        $usrTemp['TempFotoCajas'],
-                        $usrTemp['CodigoParticipacion'],
-                        $usrTemp['TempIdTelefonia'],
-                        $usrTemp['TempTelefonoRecarga']
-                    ]
-                );
- 
-                // Limpiar campos temporales en tblUsuario
-                DB::execute(
-                    "UPDATE tblUsuario SET TempFotoCajas = NULL, TempIdTelefonia = NULL, TempTelefonoRecarga = NULL WHERE idUsuario = ?",
-                    [$usuario['idUsuario']]
-                );
- 
-                // Obtener total de participaciones para ver si puede hacer otra (Estatus 1, 2, 4, 5)
-                $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
-                $participaciones = (int)($rowRegs['total'] ?? 0);
- 
-                if ($participaciones >= 6) {
-                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$usrTemp['TempTelefonoRecarga']}* para tu recarga. 📱\n\n"
-                          . "Tu registro pasará a validación... 🔍\n"
-                          . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n"
-                          . "¡Muchas gracias por participar! 🙏";
-                } else {
-                    $body = "¡Perfecto! Hemos registrado tu compañía telefónica y el número *{$usrTemp['TempTelefonoRecarga']}* para tu recarga. 📱\n\n"
-                          . "Tu registro pasará a validación... 🔍\n"
-                          . "En un periodo máximo de 48hrs hábiles te daremos respuesta en este mismo chat.\n\n"
-                          . "Recuerda que puedes registrar hasta *6 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola* en cualquier momento. ¡Gracias por participar! 🙏";
-                }
- 
-                $wa->sendText($celular, $body);
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            } else {
-                $wa->sendText($celular, "Ocurrió un inconveniente. Por favor, envía la foto nuevamente. 📸");
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            }
-        }
-        elseif ($userResponse === 'confirm_cambiar_tel') {
-            $body = "Por favor, escribe el *nuevo número celular a 10 dígitos* al cual deseas que le realicemos la recarga telefónica:";
+            // Confirmar y copiar datos temporales a definitivos
+            $usrTemp = DB::selectOne("SELECT TempNombre, TempEmail, TempEstado FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            DB::execute(
+                "UPDATE tblUsuario SET Nombre = ?, Email = ?, Estado = ?, PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?",
+                [$usrTemp['TempNombre'], $usrTemp['TempEmail'], $usrTemp['TempEstado'], $usuario['idUsuario']]
+            );
+
+            $body = "¡Perfecto! Ahora envíanos una fotografía clara y legible de tu ticket de compra completo.\n\n"
+                  . "📸 *Recomendaciones:*\n"
+                  . "• Asegúrate de que el ticket se vea completo.\n"
+                  . "• La fecha, hora, tienda y productos participantes deben ser visibles.\n"
+                  . "• Evita reflejos, sombras o imágenes borrosas.\n\n"
+                  . "Adjunta la fotografía de tu ticket para continuar.";
             $wa->sendText($celular, $body);
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_TELEFONO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
         }
-        elseif ($userResponse === 'confirm_cambiar_comp') {
-            $bodyList = "Por favor, selecciona nuevamente tu compañía telefónica de la siguiente lista:";
-            $rowsList = [
-                ['id' => 'tel_1', 'title' => 'Telcel'],
-                ['id' => 'tel_2', 'title' => 'AT&T'],
-                ['id' => 'tel_3', 'title' => 'Unefon'],
-                ['id' => 'tel_4', 'title' => 'Movistar'],
-                ['id' => 'tel_5', 'title' => 'Virgin Mobile']
-            ];
-            $wa->sendList($celular, $bodyList, "Ver Compañías", $rowsList, "Compañía Telefónica");
-            DB::execute("UPDATE tblUsuario SET PasoBot = 'SELECCION_TELEFONIA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+        elseif ($userResponse === 'confirm_no') {
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_NOMBRE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $body = "Entendido. Vamos a corregir tus datos.\n\nPor favor comparte tu *nombre completo* tal como aparece en tu identificación oficial:";
+            $wa->sendText($celular, $body);
         }
         else {
-            $usrTemp = DB::selectOne("SELECT TempIdTelefonia, TempTelefonoRecarga FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            if ($usrTemp && !empty($usrTemp['TempIdTelefonia']) && !empty($usrTemp['TempTelefonoRecarga'])) {
-                $telefoniaRow = DB::selectOne("SELECT Telefonia FROM tblTelefonia WHERE idTelefonia = ?", [$usrTemp['TempIdTelefonia']]);
-                $nombreTelefonia = $telefoniaRow['Telefonia'] ?? 'Compañía';
+            $usrTemp = DB::selectOne("SELECT TempNombre, TempEmail, TempEstado FROM tblUsuario WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $body = "Por favor verifica que tus datos sean correctos:\n\n"
+                  . "👤 *Nombre:* {$usrTemp['TempNombre']}\n"
+                  . "📱 *Teléfono:* {$celular}\n"
+                  . "📧 *Correo:* {$usrTemp['TempEmail']}\n"
+                  . "📍 *Estado:* {$usrTemp['TempEstado']}\n\n"
+                  . "¿La información es correcta?";
+            $buttons = [
+                ['id' => 'confirm_si', 'title' => 'Sí, es correcta'],
+                ['id' => 'confirm_no', 'title' => 'No, deseo corregirla']
+            ];
+            $wa->sendButtons($celular, $body, $buttons, "Verificación");
+        }
+    }
+    elseif ($pasoActual === 'FOTO_PENDIENTE') {
+        if ($msgType === 'image') {
+            $imageInfo = $inbound['image'] ?? null;
+            $mediaId = $imageInfo['id'] ?? '';
+            $mediaSource = !empty($imageInfo['link']) ? $imageInfo['link'] : $mediaId;
+            
+            if (!empty($mediaSource)) {
+                $ext = 'jpg';
+                if (($imageInfo['mime_type'] ?? '') === 'image/png') {
+                    $ext = 'png';
+                }
+                
+                $filename = "ticket_g15k_" . $usuario['idUsuario'] . "_" . time() . "." . $ext;
+                $savedFile = $wa->downloadMedia($mediaSource, $filename);
 
-                $body = "🔍 *Confirma tus datos para continuar:*\n\n"
-                      . "📱 *Compañía:* {$nombreTelefonia}\n"
-                      . "📞 *Número de Recarga:* {$usrTemp['TempTelefonoRecarga']}\n\n"
-                      . "¿Los datos son correctos?";
+                if ($savedFile) {
+                    $tokenCanje = hash('sha256', $celular . time() . uniqid());
+                    // Insertar en tblRegistro
+                    DB::execute(
+                        "INSERT INTO tblRegistro (idUsuario, Token, FotoCajas, Estatus) VALUES (?, ?, ?, 1)",
+                        [$usuario['idUsuario'], $tokenCanje, $savedFile]
+                    );
 
-                $buttons = [
-                    ['id' => 'confirm_si', 'title' => 'Sí, Confirmar'],
-                    ['id' => 'confirm_cambiar_tel', 'title' => 'Cambiar Número'],
-                    ['id' => 'confirm_cambiar_comp', 'title' => 'Cambiar Compañía']
-                ];
-                $wa->sendButtons($celular, $body, $buttons, "Confirmación");
+                    $body = "✅ ¡Tu ticket fue registrado!\n\n"
+                          . "Hemos recibido correctamente tu información y tu ticket de compra. Nuestro equipo realizará la validación correspondiente.\n\n"
+                          . "Te recomendamos conservar tu ticket original hasta la conclusión de la promoción.\n\n"
+                          . "¡Gracias por participar en la promoción *G15K* de *Gatorade®*!";
+                    $wa->sendText($celular, $body);
+
+                    DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+                } else {
+                    $wa->sendText($celular, "Hubo un error al procesar tu imagen. Por favor, intenta enviarla nuevamente. 📸");
+                }
             } else {
-                $wa->sendText($celular, "Ocurrió un inconveniente. Por favor escribe *Hola* para reiniciar. 🔄");
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'BIENVENIDA' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+                $wa->sendText($celular, "No pudimos obtener la imagen. Por favor, intenta de nuevo. 📸");
             }
+        } else {
+            $body = "Por favor, envía una fotografía clara y legible de tu ticket de compra completo para continuar. 📸";
+            $wa->sendText($celular, $body);
         }
     }
     elseif ($pasoActual === 'COMPLETADO') {
-        // Verificar cuántos registros válidos tiene
-        $rowRegs = DB::selectOne("SELECT COUNT(*) AS total FROM tblRegistro WHERE idUsuario = ? AND Estatus IN (1, 2, 4, 5)", [$usuario['idUsuario']]);
-        $participaciones = (int)($rowRegs['total'] ?? 0);
-
-        if ($participaciones >= 6) {
-            $body = "Ya has alcanzado el límite máximo de *6 participaciones* permitidas en esta promoción. 📱\n\n"
-                  . "Si tus registros anteriores están en proceso, en breve te daremos respuesta. ¡Muchas gracias por participar! 🙏";
-        } else {
-            $body = "Tu registro está en proceso de validación. 🔍 En un lapso máximo de 48hrs hábiles te daremos respuesta aquí mismo.\n\n"
-                  . "Recuerda que puedes registrar hasta *6 participaciones* en esta promoción. Si deseas registrar otra participación con 3 nuevas cajetillas, escribe la palabra *Hola*. ¡Gracias por participar! 🙏";
-        }
+        $body = "Tu ticket de compra está en proceso de validación. 🔍\n"
+              . "En caso de resultar ganador nos pondremos en contacto contigo.\n\n"
+              . "Si tienes más compras por registrar escribe la palabra *Hola* y sigue nuevamente los pasos del Bot. ¡Gracias por participar! 🏆";
         $wa->sendText($celular, $body);
     }
 
 } catch (Exception $e) {
     error_log("Webhook Error: " . $e->getMessage() . "\nStack: " . $e->getTraceAsString());
-}
-
-/**
- * Genera un código único alfanumérico de 6 dígitos que omite
- * los caracteres confusos solicitados: 1, I, O, 0, 2, Z, 6, G, l, L.
- */
-function generateUniqueCode(): string
-{
-    $chars = 'ABCDEFHJKMNPQRSTUVWXY345789';
-    $len = 6;
-    do {
-        $code = '';
-        for ($i = 0; $i < $len; $i++) {
-            $code .= $chars[rand(0, strlen($chars) - 1)];
-        }
-        // Validar unicidad
-        $exists = DB::selectOne("SELECT 1 FROM tblUsuario WHERE CodigoParticipacion = ?", [$code]);
-    } while ($exists);
-    
-    return $code;
 }

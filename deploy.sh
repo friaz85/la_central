@@ -1,8 +1,5 @@
-#!/usr/bin/env bash
-# =================================================================
-# deploy.sh — La Central "Clásicos de la Fe"
+# deploy.sh — Gatorade G15K
 # Deploy al servidor SiteGround vía rsync + SSH
-# Usage: ./deploy.sh [full|api|admin]
 # =================================================================
 
 set -euo pipefail
@@ -12,7 +9,7 @@ SSH_KEY="$HOME/.ssh/id_rsa_siteground"
 SSH_HOST="ssh.qrewards.com.mx"
 SSH_PORT="18765"
 SSH_USER="u6-pu9mvhpmgwh1"
-REMOTE_BASE="/home/customer/www/clasicoslafe.qrewards.com.mx/public_html"
+REMOTE_BASE="/home/customer/www/g15k.qrewards.com.mx/public_html"
 LOCAL_BACKEND="$(dirname "$0")/backend"
 LOCAL_FRONTEND="$(dirname "$0")/frontend"
 
@@ -111,7 +108,7 @@ HTEOF"
 # ── Main ───────────────────────────────────────────────────────────
 echo ""
 echo "╔════════════════════════════════════════╗"
-echo "║      La Central — Deploy Script        ║"
+echo "║      Gatorade G15K — Deploy Script     ║"
 echo "╚════════════════════════════════════════╝"
 echo ""
 log "Modo: $MODE"
@@ -139,7 +136,7 @@ git_sync
 echo ""
 echo "╔════════════════════════════════════════╗"
 ok "Despliegue completado exitosamente! 🚀"
-echo "  → URL:      https://clasicoslafe.qrewards.com.mx/"
-echo "  → Backend:  https://clasicoslafe.qrewards.com.mx/backend/"
+echo "  → URL:      https://g15k.qrewards.com.mx/"
+echo "  → Backend:  https://g15k.qrewards.com.mx/backend/"
 echo "╚════════════════════════════════════════╝"
 echo ""

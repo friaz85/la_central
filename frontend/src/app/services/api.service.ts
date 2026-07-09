@@ -12,7 +12,7 @@ export class ApiService {
   constructor(private http: HttpClient) {
     // Si estamos en local (localhost:4200), podemos apuntar al host local PHP
     if (window.location.hostname === 'localhost') {
-      this.apiBaseUrl = 'http://localhost/la_central/backend';
+      this.apiBaseUrl = 'http://localhost/g15k/backend';
     } else {
       // Dinámico basado en el host de producción
       this.apiBaseUrl = `${window.location.origin}/backend`;
@@ -46,11 +46,11 @@ export class ApiService {
     return this.http.get(`${this.apiBaseUrl}/api/registros.php`, { headers: this.getAuthHeaders() });
   }
 
-  aprobarRegistro(idRegistro: number, telefono: string): Observable<any> {
+  aprobarRegistro(idRegistro: number, payload: any): Observable<any> {
     return this.http.post(`${this.apiBaseUrl}/api/registros.php`, {
       idRegistro,
       accion: 'aprobar',
-      telefono
+      ...payload
     }, { headers: this.getAuthHeaders() });
   }
 
@@ -60,6 +60,14 @@ export class ApiService {
       accion: 'rechazar',
       motivo
     }, { headers: this.getAuthHeaders() });
+  }
+
+  getCadenas(): Observable<any> {
+    return this.http.get(`${this.apiBaseUrl}/api/cadenas.php`, { headers: this.getAuthHeaders() });
+  }
+
+  getProductos(): Observable<any> {
+    return this.http.get(`${this.apiBaseUrl}/api/productos.php`, { headers: this.getAuthHeaders() });
   }
 
   getDashboard(params?: any): Observable<any> {
