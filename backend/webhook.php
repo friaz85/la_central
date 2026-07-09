@@ -235,9 +235,26 @@ try {
         }
 
         if ($userResponse === 'tyc_si') {
-            DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1, PasoBot = 'INGRESO_NOMBRE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-            $body = "Perfecto. Para comenzar tu registro, por favor comparte tu *nombre completo* tal como aparece en tu identificación oficial:";
-            $wa->sendText($celular, $body);
+            DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1 WHERE idUsuario = ?", [$usuario['idUsuario']]);
+
+            // Si ya tiene datos completos, saltar directo a foto
+            $datosCompletos = !empty($usuario['Nombre']) && !empty($usuario['Email']) && !empty($usuario['Estado']);
+
+            if ($datosCompletos) {
+                DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+                $body = "¡Bienvenido(a) de nuevo, *{$usuario['Nombre']}*! 👋\n\n"
+                      . "Ahora envíanos una fotografía clara y legible de tu ticket de compra completo.\n\n"
+                      . "📸 *Recomendaciones:*\n"
+                      . "• Asegúrate de que el ticket se vea completo.\n"
+                      . "• La fecha, hora, tienda y productos participantes deben ser visibles.\n"
+                      . "• Evita reflejos, sombras o imágenes borrosas.\n\n"
+                      . "Adjunta la fotografía de tu ticket para continuar.";
+                $wa->sendText($celular, $body);
+            } else {
+                DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_NOMBRE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+                $body = "Perfecto. Para comenzar tu registro, por favor comparte tu *nombre completo* tal como aparece en tu identificación oficial:";
+                $wa->sendText($celular, $body);
+            }
         } 
         elseif ($userResponse === 'tyc_no') {
             $body = "Entendemos tu decisión. 😊\n"
