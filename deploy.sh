@@ -27,6 +27,7 @@ rsync -avz --delete \
 echo "▶ Deploying backend → $REMOTE_ROOT/backend/"
 cd "$(dirname "$0")"
 rsync -avz \
+  --exclude 'uploads/' \
   -e "ssh -p $PORT -i $SSH_KEY -o StrictHostKeyChecking=no" \
   backend/ \
   "$REMOTE:$REMOTE_ROOT/backend/"

@@ -7,6 +7,10 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/php_error.log');
 
+// Zona horaria: México abolió el horario de verano en 2023 → UTC-6 fijo
+// Etc/GMT+6 = UTC-6 (convención POSIX: el signo es invertido)
+date_default_timezone_set('Etc/GMT+6');
+
 // Configuración de la Base de Datos (SiteGround)
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u919bgucjtnc4');
@@ -40,8 +44,7 @@ define('ADMIN_USERS', [
 define('ADMIN_PASS_ADMIN', 'Cerrillera2026!');
 define('ADMIN_PASS_OPERACIONES', 'Operaciones2026!');
 
-// Configurar zona horaria de México
-date_default_timezone_set('America/Mexico_City');
+
 
 // Plantillas de WhatsApp (YCloud) para notificaciones fuera de ventana de 24 hrs
 // PENDIENTE: configurar nombres reales una vez aprobadas en Meta Business Manager

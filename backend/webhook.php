@@ -408,10 +408,13 @@ try {
                     $body = "✅ ¡Tu ticket fue registrado!\n\n"
                           . "Hemos recibido correctamente tu información y tu ticket de compra. Nuestro equipo realizará la validación correspondiente.\n\n"
                           . "Te recomendamos conservar tu ticket original hasta la conclusión de la promoción.\n"
-                          . "¡Gracias por participar en la promoción *G15K* de *Gatorade®*!";
+                          . "¡Gracias por participar en la promoción *G15K* de *Gatorade®*!\n\n"
+                          . "Si tienes más compras por registrar escribe la palabra *Hola* y sigue nuevamente los pasos del Bot.";
                     $wa->sendText($celular, $body);
 
                     DB::execute("UPDATE tblUsuario SET PasoBot = 'COMPLETADO' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+
+
                 } else {
                     $wa->sendText($celular, "Hubo un error al procesar tu imagen. Por favor, intenta enviarla nuevamente. 📸");
                 }
