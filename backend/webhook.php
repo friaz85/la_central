@@ -429,6 +429,13 @@ try {
               . "Si tienes más compras por registrar escribe la palabra *Hola* y sigue nuevamente los pasos del Bot. ¡Gracias por participar! 🏆";
         $wa->sendText($celular, $body);
     }
+    else {
+        // Fallback global: estado desconocido o mensaje fuera de contexto
+        $wa->sendText($celular,
+            "No entendimos tu mensaje. 😊\n\n"
+          . "Escribe *Hola* para comenzar o continuar con tu registro en la promoción *G15K de Gatorade®*."
+        );
+    }
 
 } catch (Exception $e) {
     error_log("Webhook Error: " . $e->getMessage() . "\nStack: " . $e->getTraceAsString());
