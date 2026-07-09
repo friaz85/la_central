@@ -202,26 +202,39 @@ try {
     $pasoActual = $usuario['PasoBot'];
 
     if ($pasoActual === 'BIENVENIDA') {
-        // Mensaje 1: Bienvenida
+        // Mensaje 1: Bienvenida (siempre se envía)
         $wa->sendText($celular,
             "🏆 ¡Bienvenido(a) a la promoción *G15K* de *Gatorade®*!\n\n"
           . "Participa comprando *\$95.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
           . "Para continuar, sigue las instrucciones que te compartiremos a continuación."
         );
 
-        // Mensaje 2: Términos y botones
-        $body = "Antes de continuar, es necesario que aceptes nuestras Bases, Términos y Condiciones, así como el Aviso de Privacidad.\n\n"
-              . "📄 Bases y Términos: https://g15k.qrewards.com.mx/bases\n"
-              . "🔒 Aviso de Privacidad: https://g15k.qrewards.com.mx/privacidad\n\n"
-              . "¿Aceptas los Bases, Términos y Condiciones, así como el Aviso de Privacidad de la promoción?";
+        // Verificar si ya tiene datos completos
+        $datosCompletos = !empty($usuario['Nombre']) && !empty($usuario['Email']) && !empty($usuario['Estado']);
 
-        $buttons = [
-            ['id' => 'tyc_si', 'title' => 'Sí, acepto'],
-            ['id' => 'tyc_no', 'title' => 'No acepto']
-        ];
-
-        $wa->sendButtons($celular, $body, $buttons);
-        DB::execute("UPDATE tblUsuario SET PasoBot = 'TERMINOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+        if ($datosCompletos) {
+            // Ir directo a foto
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $body = "¡Ahora envíanos una fotografía clara y legible de tu ticket de compra completo!\n\n"
+                  . "📸 *Recomendaciones:*\n"
+                  . "• Asegúrate de que el ticket se vea completo.\n"
+                  . "• La fecha, hora, tienda y productos participantes deben ser visibles.\n"
+                  . "• Evita reflejos, sombras o imágenes borrosas.\n\n"
+                  . "Adjunta la fotografía de tu ticket para continuar.";
+            $wa->sendText($celular, $body);
+        } else {
+            // Enviar T&C con botones
+            $body = "Antes de continuar, es necesario que aceptes nuestras Bases, Términos y Condiciones, así como el Aviso de Privacidad.\n\n"
+                  . "📄 Bases y Términos: https://g15k.qrewards.com.mx/bases\n"
+                  . "🔒 Aviso de Privacidad: https://g15k.qrewards.com.mx/privacidad\n\n"
+                  . "¿Aceptas los Bases, Términos y Condiciones, así como el Aviso de Privacidad de la promoción?";
+            $buttons = [
+                ['id' => 'tyc_si', 'title' => 'Sí, acepto'],
+                ['id' => 'tyc_no', 'title' => 'No acepto']
+            ];
+            $wa->sendButtons($celular, $body, $buttons);
+            DB::execute("UPDATE tblUsuario SET PasoBot = 'TERMINOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+        }
 
 
     } 
@@ -235,26 +248,9 @@ try {
         }
 
         if ($userResponse === 'tyc_si') {
-            DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1 WHERE idUsuario = ?", [$usuario['idUsuario']]);
-
-            // Si ya tiene datos completos, saltar directo a foto
-            $datosCompletos = !empty($usuario['Nombre']) && !empty($usuario['Email']) && !empty($usuario['Estado']);
-
-            if ($datosCompletos) {
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'FOTO_PENDIENTE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-                $body = "¡Bienvenido(a) de nuevo, *{$usuario['Nombre']}*! 👋\n\n"
-                      . "Ahora envíanos una fotografía clara y legible de tu ticket de compra completo.\n\n"
-                      . "📸 *Recomendaciones:*\n"
-                      . "• Asegúrate de que el ticket se vea completo.\n"
-                      . "• La fecha, hora, tienda y productos participantes deben ser visibles.\n"
-                      . "• Evita reflejos, sombras o imágenes borrosas.\n\n"
-                      . "Adjunta la fotografía de tu ticket para continuar.";
-                $wa->sendText($celular, $body);
-            } else {
-                DB::execute("UPDATE tblUsuario SET PasoBot = 'INGRESO_NOMBRE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
-                $body = "Perfecto. Para comenzar tu registro, por favor comparte tu *nombre completo* tal como aparece en tu identificación oficial:";
-                $wa->sendText($celular, $body);
-            }
+            DB::execute("UPDATE tblUsuario SET TerminosAceptados = 1, PasoBot = 'INGRESO_NOMBRE' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+            $body = "Perfecto. Para comenzar tu registro, por favor comparte tu *nombre completo* tal como aparece en tu identificación oficial:";
+            $wa->sendText($celular, $body);
         } 
         elseif ($userResponse === 'tyc_no') {
             $body = "Entendemos tu decisión. 😊\n"
