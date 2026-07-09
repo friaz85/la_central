@@ -1,0 +1,13 @@
+Options -MultiViews
+RewriteEngine On
+RewriteBase /
+
+# No reescribir archivos o directorios reales
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# No reescribir peticiones al backend PHP
+RewriteCond %{REQUEST_URI} !^/backend/
+
+# Todo lo demás → index.html (Angular SPA)
+RewriteRule ^ index.html [L]
