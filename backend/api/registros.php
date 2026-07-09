@@ -121,8 +121,8 @@ elseif ($method === 'POST') {
             // Enviar mensaje de aprobación de Gatorade G15K
             $mensaje = "🎉 ¡Felicidades! Tu ticket de compra ha sido validado correctamente.\n\n"
                      . "En caso de resultar entre uno de los ganadores te lo indicaremos por este mismo medio. 😊\n\n"
-                     . "Si tienes más compras por registrar escribe la palabra Hola y sigue nuevamente los pasos del Bot.\n"
-                     . "¡Gracias por participar en la promoción G15K de Gatorade®!";
+                     . "Si tienes más compras por registrar escribe la palabra *Hola* y sigue nuevamente los pasos del Bot.\n"
+                     . "¡Gracias por participar en la promoción *G15K* de *Gatorade®*!";
 
             $notificado = false;
             $diffHours = (time() - strtotime($registro['FechaRegistro'])) / 3600;
@@ -170,10 +170,9 @@ elseif ($method === 'POST') {
             // Enviar mensaje de rechazo de Gatorade G15K
             $mensaje = "⚠️ ¡Lo sentimos!\n\n"
                      . "Tu ticket de compra no pudo ser validado por el siguiente motivo:\n"
-                     . "*{$motivo}*\n\n"
-                     . "Te recomendamos enviar un ticket de acuerdo con las especificaciones en los TyC de la promoción.\n"
-                     . "Si tienes otro ticket o quieres volver a intentarlo escribe la palabra Hola y sigue nuevamente los pasos del Bot.\n"
-                     . "¡Gracias por participar en la promoción G15K de Gatorade®!";
+                     . "• {$motivo}\n\n"
+                     . "Te recomendamos enviar un ticket de acuerdo con las especificaciones en los TyC de la promoción. Si tienes otro ticket o quieres volver a intentarlo escribe la palabra *Hola* y sigue nuevamente los pasos del Bot.\n"
+                     . "¡Gracias por participar en la promoción *G15K* de *Gatorade®*!";
 
             $notificado = false;
             $diffHours = (time() - strtotime($registro['FechaRegistro'])) / 3600;

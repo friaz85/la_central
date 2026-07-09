@@ -71,59 +71,90 @@ if (function_exists('fastcgi_finish_request')) {
     fastcgi_finish_request();
 }
 
+// ── Parsear formato nativo de YCloud ──────────────────────────────────────
+// YCloud envía: { "type": "whatsapp.inbound_message.received", "whatsappInboundMessage": { ... } }
 $inbound = null;
 
-if (isset($data['object']) && $data['object'] === 'whatsapp_business_account') {
-    $entry = $data['entry'][0] ?? null;
-    $change = $entry['changes'][0] ?? null;
-    $value = $change['value'] ?? null;
-    
-    if ($value && isset($value['messages'][0])) {
-        $message = $value['messages'][0];
-        $contact = $value['contacts'][0] ?? null;
-        
-        $celular = $message['from'] ?? '';
-        $msgId = $message['id'] ?? '';
-        $msgType = $message['type'] ?? 'text';
+$eventType = $data['type'] ?? '';
+
+if ($eventType === 'whatsapp.inbound_message.received' && isset($data['whatsappInboundMessage'])) {
+    $msg = $data['whatsappInboundMessage'];
+
+    $celular  = ltrim($msg['from'] ?? '', '+');   // quitar el + si lo trae
+    $msgId    = $msg['id'] ?? '';
+    $msgType  = $msg['type'] ?? 'text';
+    $userName = $msg['customerProfile']['name'] ?? 'Participante';
+
+    $inbound = [
+        'from'            => $celular,
+        'id'              => $msgId,
+        'type'            => $msgType,
+        'customerProfile' => ['name' => $userName],
+    ];
+
+    if ($msgType === 'text') {
+        $inbound['text'] = ['body' => $msg['text']['body'] ?? ''];
+    } elseif ($msgType === 'interactive') {
+        $interactiveType = $msg['interactive']['type'] ?? '';
+        if ($interactiveType === 'button_reply') {
+            $inbound['interactive'] = [
+                'button_reply' => [
+                    'id'    => $msg['interactive']['button_reply']['id']    ?? '',
+                    'title' => $msg['interactive']['button_reply']['title'] ?? ''
+                ]
+            ];
+        }
+    } elseif ($msgType === 'image') {
+        $inbound['image'] = [
+            'id'        => $msg['image']['id']        ?? '',
+            'mime_type' => $msg['image']['mimeType']  ?? 'image/jpeg',
+            'caption'   => $msg['image']['caption']   ?? '',
+            'link'      => $msg['image']['link']      ?? ''
+        ];
+    }
+}
+
+// ── Fallback: formato Meta (whatsapp_business_account) ────────────────────
+if (!$inbound && isset($data['object']) && $data['object'] === 'whatsapp_business_account') {
+    $message = $data['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
+    $contact = $data['entry'][0]['changes'][0]['value']['contacts'][0] ?? null;
+
+    if ($message) {
+        $celular  = $message['from'] ?? '';
+        $msgId    = $message['id']   ?? '';
+        $msgType  = $message['type'] ?? 'text';
         $userName = $contact['profile']['name'] ?? 'Participante';
-        
+
         $inbound = [
-            'from' => $celular,
-            'id' => $msgId,
-            'type' => $msgType,
+            'from'            => $celular,
+            'id'              => $msgId,
+            'type'            => $msgType,
             'customerProfile' => ['name' => $userName],
         ];
-        
+
         if ($msgType === 'text') {
-            $inbound['text'] = [
-                'body' => $message['text']['body'] ?? ''
-            ];
+            $inbound['text'] = ['body' => $message['text']['body'] ?? ''];
         } elseif ($msgType === 'interactive') {
             $interactiveType = $message['interactive']['type'] ?? '';
             if ($interactiveType === 'button_reply') {
                 $inbound['interactive'] = [
                     'button_reply' => [
-                        'id' => $message['interactive']['button_reply']['id'] ?? '',
+                        'id'    => $message['interactive']['button_reply']['id']    ?? '',
                         'title' => $message['interactive']['button_reply']['title'] ?? ''
                     ]
                 ];
             }
         } elseif ($msgType === 'image') {
             $inbound['image'] = [
-                'id' => $message['image']['id'] ?? '',
+                'id'        => $message['image']['id']        ?? '',
                 'mime_type' => $message['image']['mime_type'] ?? 'image/jpeg',
-                'caption' => $message['image']['caption'] ?? '',
-                'link' => $message['image']['link'] ?? ''
+                'caption'   => $message['image']['caption']   ?? '',
+                'link'      => $message['image']['link']      ?? ''
             ];
         }
     }
 }
 
-if (!$inbound) {
-    exit;
-}
-
-$celular = $inbound['from'] ?? '';
 $msgId   = $inbound['id'] ?? '';
 $msgType = $inbound['type'] ?? 'text';
 $userName = $inbound['customerProfile']['name'] ?? 'Participante';
@@ -171,10 +202,15 @@ try {
     $pasoActual = $usuario['PasoBot'];
 
     if ($pasoActual === 'BIENVENIDA') {
-        $body = "🏆 ¡Bienvenido(a) a la promoción *G15K* de *Gatorade®*!\n\n"
-              . "Participa comprando *$95.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
-              . "Para continuar, sigue las instrucciones que te compartiremos a continuación.\n\n"
-              . "Antes de continuar, es necesario que aceptes nuestras Bases, Términos y Condiciones, así como el Aviso de Privacidad.\n"
+        // Mensaje 1: Bienvenida
+        $wa->sendText($celular,
+            "🏆 ¡Bienvenido(a) a la promoción *G15K* de *Gatorade®*!\n\n"
+          . "Participa comprando *\$95.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
+          . "Para continuar, sigue las instrucciones que te compartiremos a continuación."
+        );
+
+        // Mensaje 2: Términos y botones
+        $body = "Antes de continuar, es necesario que aceptes nuestras Bases, Términos y Condiciones, así como el Aviso de Privacidad.\n\n"
               . "📄 Bases y Términos: https://g15k.qrewards.com.mx/bases\n"
               . "🔒 Aviso de Privacidad: https://g15k.qrewards.com.mx/privacidad\n\n"
               . "¿Aceptas los Bases, Términos y Condiciones, así como el Aviso de Privacidad de la promoción?";
@@ -184,8 +220,10 @@ try {
             ['id' => 'tyc_no', 'title' => 'No acepto']
         ];
 
-        $wa->sendButtons($celular, $body, $buttons, "Gatorade G15K");
+        $wa->sendButtons($celular, $body, $buttons);
         DB::execute("UPDATE tblUsuario SET PasoBot = 'TERMINOS' WHERE idUsuario = ?", [$usuario['idUsuario']]);
+
+
     } 
     elseif ($pasoActual === 'TERMINOS') {
         $userResponse = '';
@@ -215,7 +253,7 @@ try {
                 ['id' => 'tyc_si', 'title' => 'Sí, acepto'],
                 ['id' => 'tyc_no', 'title' => 'No acepto']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Términos y Condiciones");
+            $wa->sendButtons($celular, $body, $buttons);
         }
     } 
     elseif ($pasoActual === 'INGRESO_NOMBRE') {
@@ -235,13 +273,13 @@ try {
             DB::execute("UPDATE tblUsuario SET TempEmail = ?, PasoBot = 'INGRESO_ESTADO' WHERE idUsuario = ?", [$emailInput, $usuario['idUsuario']]);
             
             $body = "Por último, indícanos en donde resides:\n"
-                  . "1️⃣ Ciudad de México o Estado de México\n"
-                  . "2️⃣ Otro estado";
+                  . "Ciudad de México o Estado de México\n"
+                  . "Otro estado";
             $buttons = [
                 ['id' => 'res_1', 'title' => 'CDMX / EDOMEX'],
                 ['id' => 'res_2', 'title' => 'Otro estado']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Residencia");
+            $wa->sendButtons($celular, $body, $buttons);
         } else {
             $body = "El correo electrónico ingresado no es válido. ❌\nPor favor, comparte un correo electrónico válido (ejemplo: usuario@correo.com):";
             $wa->sendText($celular, $body);
@@ -274,7 +312,7 @@ try {
                 ['id' => 'confirm_si', 'title' => 'Sí, es correcta'],
                 ['id' => 'confirm_no', 'title' => 'No, deseo corregirla']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Verificación");
+            $wa->sendButtons($celular, $body, $buttons);
         } else {
             $body = "Por favor, indícanos en donde resides utilizando los botones:\n"
                   . "1️⃣ Ciudad de México o Estado de México\n"
@@ -283,7 +321,7 @@ try {
                 ['id' => 'res_1', 'title' => 'CDMX / EDOMEX'],
                 ['id' => 'res_2', 'title' => 'Otro estado']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Residencia");
+            $wa->sendButtons($celular, $body, $buttons);
         }
     }
     elseif ($pasoActual === 'CONFIRMACION_DATOS') {
@@ -328,7 +366,7 @@ try {
                 ['id' => 'confirm_si', 'title' => 'Sí, es correcta'],
                 ['id' => 'confirm_no', 'title' => 'No, deseo corregirla']
             ];
-            $wa->sendButtons($celular, $body, $buttons, "Verificación");
+            $wa->sendButtons($celular, $body, $buttons);
         }
     }
     elseif ($pasoActual === 'FOTO_PENDIENTE') {
@@ -356,7 +394,7 @@ try {
 
                     $body = "✅ ¡Tu ticket fue registrado!\n\n"
                           . "Hemos recibido correctamente tu información y tu ticket de compra. Nuestro equipo realizará la validación correspondiente.\n\n"
-                          . "Te recomendamos conservar tu ticket original hasta la conclusión de la promoción.\n\n"
+                          . "Te recomendamos conservar tu ticket original hasta la conclusión de la promoción.\n"
                           . "¡Gracias por participar en la promoción *G15K* de *Gatorade®*!";
                     $wa->sendText($celular, $body);
 
@@ -373,7 +411,7 @@ try {
         }
     }
     elseif ($pasoActual === 'COMPLETADO') {
-        $body = "Tu ticket de compra está en proceso de validación. 🔍\n"
+        $body = "Tu ticket de compra está en proceso de validación. 🔍\n\n"
               . "En caso de resultar ganador nos pondremos en contacto contigo.\n\n"
               . "Si tienes más compras por registrar escribe la palabra *Hola* y sigue nuevamente los pasos del Bot. ¡Gracias por participar! 🏆";
         $wa->sendText($celular, $body);
