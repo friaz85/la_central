@@ -57,13 +57,16 @@ if ($method === 'GET') {
             $chartData = DB::select($chartSql);
         }
 
-        // Top telefonías (basado en registros completados / aprobados)
-        $topTelefonias = DB::select("
-            SELECT t.Telefonia, COUNT(r.idTelefonia) as total
+        // Top 10 usuarios con más registros validados (Estatus = 2 = Aprobado)
+        $topUsuarios = DB::select("
+            SELECT u.Nombre, u.Celular,
+                   COUNT(r.idRegistro) as total_validados
             FROM tblRegistro r
-            JOIN tblTelefonia t ON t.idTelefonia = r.idTelefonia
-            WHERE r.Estatus IN (4,5) AND r.Activo = 1
-            GROUP BY r.idTelefonia ORDER BY total DESC LIMIT 5
+            JOIN tblUsuario u ON u.idUsuario = r.idUsuario
+            WHERE r.Estatus = 2 AND r.Activo = 1
+            GROUP BY r.idUsuario
+            ORDER BY total_validados DESC
+            LIMIT 10
         ");
 
         // Actividad reciente
@@ -98,7 +101,7 @@ if ($method === 'GET') {
                 ]
             ],
             "chart"          => $chartData,
-            "top_telefonias" => $topTelefonias,
+            "top_usuarios"   => $topUsuarios,
             "recent"         => $recent
         ]);
     } catch (Exception $e) {

@@ -14,16 +14,14 @@ define('DB_PASS', '{1A1sN(k{tde');
 define('DB_NAME', 'db5iwnlmwudfbp');
 
 // Configuración de YCloud (API WhatsApp)
-define('YCLOUD_API_KEY', 'b61e82606d294400975813a06184830d');
-define('YCLOUD_API_URL', 'https://api.ycloud.com/v2/whatsapp/messages');
-define('YCLOUD_WABA_ID', '3912557032207779');
-define('YCLOUD_FROM_PHONE', '525537041142'); // Número remitente formateado
-define('YCLOUD_WEBHOOK_SECRET', 'whsec_4565af4e9cc244ae83cd00562cc43395'); // Firma de validación de webhook
+define('YCLOUD_API_KEY',        'f741a05b8a87de4a6877fa3c90b33f35');
+define('YCLOUD_API_URL',        'https://api.ycloud.com/v2/whatsapp/messages');
+define('YCLOUD_WABA_ID',        '1015708140860983');
+define('YCLOUD_FROM_PHONE',     '525549194842'); // Número remitente registrado en YCloud
+define('YCLOUD_WEBHOOK_SECRET', 'whsec_a065c23ad7df49629224c6cb7e55893e');
+define('YCLOUD_WEBHOOK_ID',     '6a4ef4d67d1ef4403aca0041');
 
-// Credenciales de Taecel (Recargas de Tiempo Aire)
-define('TAECEL_KEY', 'M1Ss74dU5Gx87KCW9mCz2Imi7bc8d6adbbdb9f57410848fa9ce325a54AeAd2k04dsciF6nmEvuo7qyu37xLuP');
-define('TAECEL_NIP', 'f82dc3d9102a7591fd37a5593dc5ab17T44ui7Pib2');
-define('TAECEL_API_URL', 'https://taecel.com/app/api/');
+// Taecel eliminado - esta plataforma no hace recargas telefónicas
 
 // Configuración de la App
 $host = $_SERVER['HTTP_HOST'] ?? 'g15k.qrewards.com.mx';
@@ -45,12 +43,8 @@ define('ADMIN_PASS_OPERACIONES', 'Operaciones2026!');
 // Configurar zona horaria de México
 date_default_timezone_set('America/Mexico_City');
 
-// Plantillas oficiales de WhatsApp (YCloud) para notificaciones fuera de la ventana de 24 horas
-define('YCLOUD_TEMPLATE_APROBACION', 'registro_aprobado'); // Nombre de la plantilla en Meta/YCloud (ej. variables: {{1}} = Nombre, {{2}} = Monto, {{3}} = Folio)
-define('YCLOUD_TEMPLATE_RECHAZO', 'registro_rechazado');       // Nombre de la plantilla en Meta/YCloud (ej. variables: {{1}} = Nombre, {{2}} = Motivo)
-
-// Configuración de 360dialog (Meta-compliant v2 API)
-define('META_ACCESS_TOKEN', '3I4O3QydIWXXH14JVtlwRlKqAK');
-define('META_TEMPLATE_APROBACION', 'registro_aprobado');
-define('META_TEMPLATE_RECHAZO', 'registro_rechazado');
+// Plantillas de WhatsApp (YCloud) para notificaciones fuera de ventana de 24 hrs
+// PENDIENTE: configurar nombres reales una vez aprobadas en Meta Business Manager
+define('YCLOUD_TEMPLATE_APROBACION', 'registro_aprobado'); // {{1}} = Nombre
+define('YCLOUD_TEMPLATE_RECHAZO',    'registro_rechazado'); // {{1}} = Nombre, {{2}} = Motivo
 

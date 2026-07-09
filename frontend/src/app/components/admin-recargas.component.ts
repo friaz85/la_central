@@ -30,7 +30,7 @@ interface RecargaLog {
         <div class="logo-area">
           <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
           <div class="logo-text">
-            <h2>Clásicos La Fe</h2>
+            <h2>Gatorade G15K</h2>
             <p>Panel de Administración</p>
           </div>
           <nav class="header-nav" style="display: flex; gap: 20px; margin-left: 40px;">
@@ -141,7 +141,7 @@ interface RecargaLog {
   styles: [`
     .dashboard-layout {
       min-height: 100vh;
-      background-color: #1A0F00;
+      background-color: #0d0d0d;
       color: #f5f5f5;
       font-family: 'Inter', sans-serif;
     }
@@ -150,8 +150,8 @@ interface RecargaLog {
       justify-content: space-between;
       align-items: center;
       padding: 16px 40px;
-      background-color: #2B1D0C;
-      border-bottom: 1px solid rgba(255, 209, 0, 0.2);
+      background-color: #1a1a1a;
+      border-bottom: 1px solid rgba(255, 102, 0, 0.2);
     }
     .logo-area {
       display: flex;
@@ -176,12 +176,12 @@ interface RecargaLog {
     }
     .user-badge {
       font-size: 0.75rem;
-      background: rgba(255, 209, 0, 0.15);
-      color: #FFD100;
+      background: rgba(255, 102, 0, 0.15);
+      color: #FF6600;
       padding: 4px 10px;
       border-radius: 20px;
       font-weight: 600;
-      border: 1px solid rgba(255, 209, 0, 0.2);
+      border: 1px solid rgba(255, 102, 0, 0.25);
     }
     .logout-btn {
       background: transparent;
@@ -206,8 +206,8 @@ interface RecargaLog {
       margin-bottom: 40px;
     }
     .stat-card {
-      background-color: #2B1D0C;
-      border: 1px solid rgba(255, 209, 0, 0.1);
+      background-color: #1a1a1a;
+      border: 1px solid rgba(255, 102, 0, 0.1);
       border-radius: 16px;
       padding: 24px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
@@ -226,13 +226,13 @@ interface RecargaLog {
       color: #fff;
     }
     .stat-card.total { border-left: 4px solid #009BE0; }
-    .stat-card.approved { border-left: 4px solid #00A753; }
+    .stat-card.approved { border-left: 4px solid #00824A; }
     .stat-card.rejected { border-left: 4px solid #E31B23; }
     
     .table-card {
-      background-color: #2B1D0C;
+      background-color: #1a1a1a;
       border-radius: 20px;
-      border: 1px solid rgba(255, 209, 0, 0.1);
+      border: 1px solid rgba(255, 102, 0, 0.1);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
       padding: 24px;
     }
@@ -259,7 +259,7 @@ interface RecargaLog {
     }
     th {
       padding: 16px;
-      border-bottom: 1px solid rgba(255, 209, 0, 0.1);
+      border-bottom: 1px solid rgba(255, 102, 0, 0.15);
       color: #aeaeb2;
       font-size: 0.85rem;
       text-transform: uppercase;

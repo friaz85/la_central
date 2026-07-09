@@ -17,13 +17,12 @@ declare const Chart: any;
         <div class="logo-area">
           <img src="/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 2px 8px rgba(255, 209, 0, 0.15);">
           <div class="logo-text">
-            <h2>Clásicos La Fe</h2>
+            <h2>Gatorade G15K</h2>
             <p>Panel de Administración</p>
           </div>
           <nav class="header-nav" style="display: flex; gap: 20px; margin-left: 40px;">
-            <a routerLink="/admin/dashboard" routerLinkActive="active" style="color: #E31B23; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Dashboard</a>
+            <a routerLink="/admin/dashboard" routerLinkActive="active" style="color: #FF6600; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Dashboard</a>
             <a routerLink="/admin/registros" routerLinkActive="active" style="color: #8e8e93; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.3s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#8e8e93'">Registros</a>
-            <a routerLink="/admin/recargas" routerLinkActive="active" style="color: #8e8e93; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.3s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#8e8e93'">Recargas</a>
           </nav>
         </div>
         <div class="user-profile">
@@ -56,7 +55,7 @@ declare const Chart: any;
             <p class="number">{{ stats()?.cards?.pendientes ?? '0' }}</p>
           </div>
           <div class="stat-card approved">
-            <h3>Recargas Aprobadas</h3>
+            <h3>Registros Aprobados</h3>
             <p class="number">{{ stats()?.cards?.aprobados ?? '0' }}</p>
           </div>
           <div class="stat-card rejected">
@@ -80,21 +79,28 @@ declare const Chart: any;
             </div>
           </div>
 
+          <!-- Top 10 Usuarios -->
           <div class="table-card" style="padding: 24px;">
-            <div class="table-header" style="margin-bottom: 20px;">
-              <h3>Compañías Telefónicas</h3>
+            <div class="table-header" style="margin-bottom: 16px;">
+              <h3>🏆 Top 10 Participantes</h3>
+              <button (click)="exportTop10ToCSV()" style="padding: 7px 14px; background: rgba(255,102,0,0.15); border: 1px solid rgba(255,102,0,0.35); color: #FF6600; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 700; transition: all 0.3s;">📥 Exportar</button>
             </div>
-            <div *ngIf="!stats()?.top_telefonias?.length" style="color: #8e8e93; font-size: 0.9rem; text-align: center; padding: 40px 0;">
-              {{ loading() ? 'Cargando...' : 'Sin datos disponibles' }}
+            <div *ngIf="!stats()?.top_usuarios?.length" style="color: #8e8e93; font-size: 0.9rem; text-align: center; padding: 40px 0;">
+              {{ loading() ? 'Cargando...' : 'Sin datos aún' }}
             </div>
-            <div *ngFor="let t of (stats()?.top_telefonias || [])" style="margin-bottom: 20px;">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem;">
-                <span style="font-weight: 600; color: #fff;">{{ t.Telefonia }}</span>
-                <span style="font-weight: 700; color: #ff453a;">{{ t.total }} recargas</span>
+            <div *ngFor="let u of (stats()?.top_usuarios || []); let i = index" style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+              <span [style.background]="i === 0 ? 'rgba(255,215,0,0.2)' : i === 1 ? 'rgba(192,192,192,0.15)' : i === 2 ? 'rgba(205,127,50,0.15)' : 'rgba(255,255,255,0.05)'"
+                    [style.color]="i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#8e8e93'"
+                    style="min-width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800;">
+                {{ i + 1 }}
+              </span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 600; color: #fff; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ u.Nombre || 'Participante' }}</div>
+                <div style="font-size: 0.75rem; color: #8e8e93;">{{ u.Celular }}</div>
               </div>
-              <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden;">
-                <div [style.width.%]="maxTelefonia() ? (t.total / maxTelefonia() * 100) : 0"
-                     style="height: 100%; background: linear-gradient(90deg, #ff453a, #ff9f0a); border-radius: 4px;"></div>
+              <div style="text-align: right;">
+                <span style="font-weight: 800; color: #FF6600; font-size: 1rem;">{{ u.total_validados }}</span>
+                <div style="font-size: 0.7rem; color: #6e6e73;">validados</div>
               </div>
             </div>
           </div>
@@ -168,7 +174,7 @@ declare const Chart: any;
   styles: [`
     .dashboard-layout {
       min-height: 100vh;
-      background-color: #1A0F00;
+      background-color: #0d0d0d;
       color: #f5f5f5;
       font-family: 'Inter', sans-serif;
     }
@@ -177,8 +183,8 @@ declare const Chart: any;
       justify-content: space-between;
       align-items: center;
       padding: 16px 40px;
-      background-color: #2B1D0C;
-      border-bottom: 1px solid rgba(255, 209, 0, 0.2);
+      background-color: #1a1a1a;
+      border-bottom: 1px solid rgba(255, 102, 0, 0.2);
     }
     .logo-area {
       display: flex;
@@ -206,12 +212,12 @@ declare const Chart: any;
     }
     .user-badge {
       font-size: 0.75rem;
-      background: rgba(255, 209, 0, 0.15);
-      color: #FFD100;
+      background: rgba(255, 102, 0, 0.15);
+      color: #FF6600;
       padding: 4px 10px;
       border-radius: 20px;
       font-weight: 600;
-      border: 1px solid rgba(255, 209, 0, 0.2);
+      border: 1px solid rgba(255, 102, 0, 0.25);
     }
     .logout-btn {
       background: transparent;
@@ -236,8 +242,8 @@ declare const Chart: any;
       margin-bottom: 40px;
     }
     .stat-card {
-      background-color: #2B1D0C;
-      border: 1px solid rgba(255, 209, 0, 0.1);
+      background-color: #1a1a1a;
+      border: 1px solid rgba(255, 102, 0, 0.1);
       border-radius: 16px;
       padding: 24px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
@@ -256,14 +262,14 @@ declare const Chart: any;
       color: #fff;
     }
     .stat-card.total { border-left: 4px solid #009BE0; }
-    .stat-card.pending { border-left: 4px solid #FFD100; }
-    .stat-card.approved { border-left: 4px solid #00A753; }
+    .stat-card.pending { border-left: 4px solid #FF6600; }
+    .stat-card.approved { border-left: 4px solid #00824A; }
     .stat-card.rejected { border-left: 4px solid #E31B23; }
 
     .table-card {
-      background-color: #2B1D0C;
+      background-color: #1a1a1a;
       border-radius: 20px;
-      border: 1px solid rgba(255, 209, 0, 0.1);
+      border: 1px solid rgba(255, 102, 0, 0.1);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
       padding: 24px;
     }
@@ -288,7 +294,7 @@ declare const Chart: any;
     }
     th {
       padding: 16px;
-      border-bottom: 1px solid rgba(255, 209, 0, 0.1);
+      border-bottom: 1px solid rgba(255, 102, 0, 0.15);
       color: #aeaeb2;
       font-size: 0.85rem;
       text-transform: uppercase;
@@ -308,10 +314,10 @@ declare const Chart: any;
       font-size: 0.75rem;
       font-weight: 600;
     }
-    .status-badge.pending { background: rgba(255, 209, 0, 0.15); color: #FFD100; }
-    .status-badge.approved { background: rgba(0, 167, 83, 0.15); color: #00A753; }
+    .status-badge.pending { background: rgba(255, 102, 0, 0.15); color: #FF6600; }
+    .status-badge.approved { background: rgba(0, 130, 74, 0.15); color: #00824A; }
     .status-badge.rejected { background: rgba(227, 27, 35, 0.15); color: #E31B23; }
-    .status-badge.completed { background: rgba(0, 167, 83, 0.15); color: #00A753; }
+    .status-badge.completed { background: rgba(0, 130, 74, 0.15); color: #00824A; }
     .status-badge.process { background: rgba(0, 155, 224, 0.15); color: #009BE0; }
     .form-control-date::-webkit-calendar-picker-indicator {
       filter: invert(1);
@@ -324,12 +330,12 @@ declare const Chart: any;
       background: rgba(255,255,255,0.1) !important;
     }
     .code-badge {
-      background: rgba(255, 209, 0, 0.05);
-      border: 1px solid rgba(255, 209, 0, 0.2);
+      background: rgba(255, 102, 0, 0.05);
+      border: 1px solid rgba(255, 102, 0, 0.2);
       padding: 6px 12px;
       border-radius: 6px;
       font-family: monospace;
-      color: #FFD100;
+      color: #FF6600;
       font-weight: 600;
       font-size: 0.95rem;
     }
@@ -449,8 +455,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   maxTelefonia(): number {
-    const t = this.stats()?.top_telefonias || [];
-    return t.length ? Math.max(...t.map((x: any) => x.total)) : 1;
+    const t = this.stats()?.top_usuarios || [];
+    return t.length ? Math.max(...t.map((x: any) => x.total_validados)) : 1;
   }
 
   loadDashboard() {
@@ -473,6 +479,28 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.startDate = '';
     this.endDate = '';
     this.loadDashboard();
+  }
+
+  exportTop10ToCSV() {
+    const data = this.stats()?.top_usuarios || [];
+    if (data.length === 0) { alert('No hay datos para exportar.'); return; }
+    const headers = ['Posición', 'Nombre', 'Celular', 'Registros Validados'];
+    const rows = data.map((u: any, i: number) => [
+      i + 1,
+      u.Nombre || 'Participante',
+      u.Celular || '',
+      u.total_validados
+    ]);
+    const csv = '\uFEFF' + [headers, ...rows].map(r => r.map((v: any) => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `top10_participantes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   private renderChart(chartData: any[]) {
