@@ -353,6 +353,10 @@ class YCloudService
         error_log("YCloud API Response (HTTP {$httpCode}): " . $response);
 
         $decoded = json_decode($response, true);
+        
+        // Esperar 1 segundo después de cada mensaje para evitar que lleguen encimados
+        sleep(1);
+
         if ($httpCode >= 400) {
             return ['success' => false, 'error' => $decoded['message'] ?? 'API Error', 'code' => $httpCode];
         }
