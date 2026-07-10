@@ -202,6 +202,10 @@ try {
     $pasoActual = $usuario['PasoBot'];
 
     if ($pasoActual === 'BIENVENIDA') {
+        // Enviar Imagen de Bienvenida
+        $imageUrl = APP_URL . '/bienvenida.jpeg';
+        $wa->sendImage($celular, $imageUrl);
+
         // Mensaje 1: Bienvenida (siempre se envía)
         $wa->sendText($celular,
             "🏆 ¡Bienvenido(a) a la promoción *G15K* de *Gatorade®*!\n\n"
