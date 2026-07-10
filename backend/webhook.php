@@ -205,6 +205,7 @@ try {
         // Enviar Imagen de Bienvenida
         $imageUrl = APP_URL . '/bienvenida.jpeg';
         $wa->sendImage($celular, $imageUrl);
+        sleep(1);
 
         // Mensaje 1: Bienvenida (siempre se envía)
         $wa->sendText($celular,
@@ -212,6 +213,7 @@ try {
           . "Participa comprando *\$95.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
           . "Para continuar, sigue las instrucciones que te compartiremos a continuación."
         );
+        sleep(1);
 
         // Verificar si ya tiene datos completos
         $datosCompletos = !empty($usuario['Nombre']) && !empty($usuario['Email']) && !empty($usuario['Estado']);
