@@ -6,15 +6,17 @@ SSH_KEY="$HOME/.ssh/id_rsa_siteground"
 PORT=18765
 REMOTE_ROOT="/home/customer/www/g15k.qrewards.com.mx/public_html"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Git commit y push
 echo "▶ Guardando cambios en Git..."
-cd "$(dirname "$0")"
+cd "$SCRIPT_DIR"
 git add -A
 git commit -m "deploy: $(date '+%Y-%m-%d %H:%M:%S')" || echo "Sin cambios nuevos para commit"
 git push || echo "Sin cambios para push"
 
 echo "▶ Building frontend..."
-cd "$(dirname "$0")/frontend"
+cd "$SCRIPT_DIR/frontend"
 npm run build
 
 echo "▶ Deploying frontend → $REMOTE_ROOT/"
@@ -25,7 +27,7 @@ rsync -avz --delete \
   "$REMOTE:$REMOTE_ROOT/"
 
 echo "▶ Deploying backend → $REMOTE_ROOT/backend/"
-cd "$(dirname "$0")"
+cd "$SCRIPT_DIR"
 rsync -avz \
   --exclude 'uploads/' \
   -e "ssh -p $PORT -i $SSH_KEY -o StrictHostKeyChecking=no" \
