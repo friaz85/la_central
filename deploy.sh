@@ -22,6 +22,8 @@ npm run build
 echo "▶ Deploying frontend → $REMOTE_ROOT/"
 rsync -avz --delete \
   --exclude 'backend/' \
+  --exclude 'privacidad/' \
+  --exclude 'bases/' \
   -e "ssh -p $PORT -i $SSH_KEY -o StrictHostKeyChecking=no" \
   dist/frontend/browser/ \
   "$REMOTE:$REMOTE_ROOT/"
