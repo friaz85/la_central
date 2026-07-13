@@ -281,15 +281,18 @@ interface Registro {
 
               <!-- Campos de Rechazo -->
               <div *ngIf="accion === 'rechazar'" style="display: flex; flex-direction: column; gap: 12px;">
-                <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2;">Motivo de Rechazo *</label>
-                
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
-                  <button type="button" *ngFor="let opt of commonRejections" (click)="form.motivo = opt" [style.background]="form.motivo === opt ? 'rgba(227, 27, 35, 0.2)' : 'rgba(255,255,255,0.05)'" [style.border-color]="form.motivo === opt ? '#ff453a' : 'rgba(255,255,255,0.1)'" style="color: #fff; padding: 6px 10px; border-radius: 6px; border: 1px solid; cursor: pointer; font-size: 0.75rem; transition: all 0.3s;">
-                    {{ opt }}
-                  </button>
+                <div>
+                  <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2;">Motivo de Rechazo *</label>
+                  <select [(ngModel)]="form.motivo" style="width: 100%; padding: 10px 12px; background: #1A1A1A; border: 1px solid rgba(255, 69, 58, 0.35); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box; cursor: pointer; font-size: 0.875rem; appearance: none; -webkit-appearance: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23aeaeb2' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 12px center;">
+                    <option value="" disabled>Selecciona un motivo...</option>
+                    <option *ngFor="let opt of commonRejections" [value]="opt">{{ opt }}</option>
+                  </select>
                 </div>
 
-                <textarea [(ngModel)]="form.motivo" placeholder="Escribe un motivo personalizado..." rows="3" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box; resize: none;"></textarea>
+                <div>
+                  <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2;">Notas adicionales (opcional)</label>
+                  <textarea [(ngModel)]="form.notasRechazo" placeholder="Detalles adicionales sobre el rechazo..." rows="2" style="width: 100%; padding: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box; resize: none;"></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -735,7 +738,8 @@ export class AdminRegistrosComponent implements OnInit {
     cadena: '',
     producto: '',
     sucursal: '',
-    motivo: ''
+    motivo: '',
+    notasRechazo: ''
   };
 
   catalogs: any = { cadenas: [], productos: [], sucursales: [] };
@@ -802,11 +806,14 @@ export class AdminRegistrosComponent implements OnInit {
   }
 
   commonRejections = [
-    'Foto borrosa / no legible',
-    'No se aprecian los productos participantes',
-    'Las cajas o ticket ya fueron registrados previamente',
-    'Monto de compra no cumple con el mínimo ($95.00 MXN)',
-    'Ticket de compra alterado o no válido'
+    'Folio de ticket ya fue registrado anteriormente',
+    'Archivo no compatible (sólo se aceptan imágenes, no PDF u otros formatos)',
+    'No se encontró el producto participante',
+    'Fecha de compra fuera de vigencia',
+    'La foto no corresponde a un ticket de compra',
+    'Tienda no participante',
+    'Fotografía no legible, borrosa o incompleta',
+    'Monto mínimo en productos participantes no alcanzado'
   ];
 
   ngOnInit() {
@@ -880,7 +887,8 @@ export class AdminRegistrosComponent implements OnInit {
       cadena: '',
       producto: '',
       sucursal: '',
-      motivo: ''
+      motivo: '',
+      notasRechazo: ''
     };
   }
 
@@ -921,7 +929,7 @@ export class AdminRegistrosComponent implements OnInit {
       if (this.sucursalesCargadas().length > 0 && !this.form.sucursal) { alert('La Sucursal / Tienda es requerida'); return; }
       if (!this.form.producto) { alert('El Producto es requerido'); return; }
     } else {
-      if (!this.form.motivo.trim()) { alert('Selecciona o escribe el motivo de rechazo'); return; }
+      if (!this.form.motivo.trim()) { alert('Selecciona el motivo de rechazo'); return; }
     }
 
     this.saving.set(true);
