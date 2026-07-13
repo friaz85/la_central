@@ -1,0 +1,4 @@
+[13-Jul-2026 10:57:43 Etc/GMT+6] DB Connection Error: SQLSTATE[HY000] [2002] No such file or directory
+[13-Jul-2026 10:57:43 Etc/GMT+6] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /Users/friaz85/Documents/Proyectos/DesaLyL/g15k/backend/migrar_sucursales.php:5) in /Users/friaz85/Documents/Proyectos/DesaLyL/g15k/backend/db.php on line 23
+[13-Jul-2026 10:57:48 Etc/GMT+6] DB Connection Error: SQLSTATE[HY000] [2002] No such file or directory
+[13-Jul-2026 10:57:48 Etc/GMT+6] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /Users/friaz85/Documents/Proyectos/DesaLyL/g15k/backend/test_db.php:10) in /Users/friaz85/Documents/Proyectos/DesaLyL/g15k/backend/db.php on line 23

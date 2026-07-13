@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -208,11 +208,66 @@ interface Registro {
                   </div>
                   <div>
                     <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2;">Cadena *</label>
-                    <select [(ngModel)]="form.cadena" style="width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box; cursor: pointer;">
+                    <select [ngModel]="form.cadena" (ngModelChange)="onCadenaChange($event)" style="width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; outline: none; box-sizing: border-box; cursor: pointer;">
                       <option value="">Selecciona...</option>
                       <option *ngFor="let c of catalogs.cadenas" [value]="c.idCadena">{{ c.Nombre }}</option>
                     </select>
                   </div>
+                </div>
+
+                <!-- Selector de Sucursal (Buscador) -->
+                <div *ngIf="sucursalesCargadas().length > 0" style="position: relative;" id="sucursal-search-dropdown-container">
+                  <label style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: #aeaeb2; font-weight: 600;">Sucursal / Tienda *</label>
+                  
+                  <div (click)="toggleSucursalDropdown($event)"
+                       style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; min-height: 38px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 0 12px; color: #fff; box-sizing: border-box;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem;">
+                      {{ getSelectedSucursalName() }}
+                    </span>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0; color: #aeaeb2; margin-left: 8px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </div>
+
+                  <div *ngIf="showSucursalDropdown" 
+                       style="position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #1C1C1E; border: 1px solid rgba(255, 102, 0, 0.3); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; padding: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="position: relative; display: flex; align-items: center;">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="position: absolute; left: 10px; width: 14px; height: 14px; color: #aeaeb2; pointer-events: none;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                      </svg>
+                      <input type="text" 
+                             style="width: 100%; padding: 8px 10px 8px 32px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #fff; font-size: 0.85rem; outline: none; box-sizing: border-box;"
+                             placeholder="Buscar sucursal por nombre o número..." 
+                             [(ngModel)]="searchSucursalText"
+                             (click)="$event.stopPropagation()">
+                    </div>
+
+                    <div style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;">
+                      <div (click)="selectSucursal(null)" 
+                           style="padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: background 0.2s;"
+                           [style.background]="!form.sucursal ? 'rgba(255, 102, 0, 0.15)' : 'transparent'"
+                           class="dropdown-item-val">
+                        Selecciona...
+                      </div>
+                      <div *ngFor="let s of filteredSucursales()" 
+                           (click)="selectSucursal(s)"
+                           style="padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: flex; flex-direction: column; gap: 2px; transition: background 0.2s;"
+                           [style.background]="form.sucursal == s.idSucursal ? 'rgba(255, 102, 0, 0.15)' : 'transparent'"
+                           class="dropdown-item-val">
+                        <span style="font-weight: 500; color: #fff;">{{ s.Tienda }}</span>
+                        <span style="font-size: 0.75rem; color: #aeaeb2; font-family: monospace;">Número: {{ s.NumeroTienda }}</span>
+                      </div>
+                      <div *ngIf="!filteredSucursales().length" 
+                           style="padding: 12px; text-align: center; font-size: 0.8rem; color: #aeaeb2;">
+                        Sin resultados
+                      </div>
+                    </div>
+                  </div>
+                  <style>
+                    .dropdown-item-val:hover {
+                      background-color: rgba(255, 102, 0, 0.1) !important;
+                    }
+                  </style>
                 </div>
 
                 <div>
@@ -669,17 +724,82 @@ export class AdminRegistrosComponent implements OnInit {
   accion = 'aprobar';
   folioDuplicado = signal(false);
 
+  searchSucursalText = '';
+  showSucursalDropdown = false;
+  sucursalesCargadas = signal<any[]>([]);
+
   form = {
     folio: '',
     fecha: '',
     monto: '',
     cadena: '',
     producto: '',
+    sucursal: '',
     motivo: ''
   };
 
+  catalogs: any = { cadenas: [], productos: [], sucursales: [] };
 
-  catalogs: any = { cadenas: [], productos: [] };
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('#sucursal-search-dropdown-container')) {
+      this.showSucursalDropdown = false;
+    }
+  }
+
+  onCadenaChange(chainId: any) {
+    this.form.cadena = chainId;
+    this.form.sucursal = '';
+    this.searchSucursalText = '';
+    this.showSucursalDropdown = false;
+    this.sucursalesCargadas.set([]);
+
+    if (!chainId) return;
+
+    const chain = this.catalogs.cadenas.find((c: any) => c.idCadena == chainId);
+    const nombre = (chain?.Nombre || '').toLowerCase();
+    if (nombre.includes('oxxo') || nombre.includes('seven') || nombre.includes('7-eleven') || nombre.includes('7')) {
+      this.api.getSucursales(chainId).subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            this.sucursalesCargadas.set(res.data || []);
+          }
+        }
+      });
+    }
+  }
+
+  filteredSucursales() {
+    const query = this.searchSucursalText.toLowerCase().trim();
+    const list = this.sucursalesCargadas();
+    if (!query) {
+      return list;
+    }
+    return list.filter((s: any) => {
+      const tienda = (s.Tienda || '').toLowerCase();
+      const num = (s.NumeroTienda || '').toLowerCase();
+      return tienda.includes(query) || num.includes(query);
+    });
+  }
+
+  getSelectedSucursalName() {
+    const selectedId = this.form.sucursal;
+    if (!selectedId) return 'Selecciona...';
+    const suc = this.sucursalesCargadas().find((s: any) => s.idSucursal == selectedId);
+    return suc ? `${suc.Tienda} (#${suc.NumeroTienda})` : 'Selecciona...';
+  }
+
+  toggleSucursalDropdown(event: Event) {
+    event.stopPropagation();
+    this.showSucursalDropdown = !this.showSucursalDropdown;
+  }
+
+  selectSucursal(s: any) {
+    this.form.sucursal = s ? s.idSucursal : '';
+    this.showSucursalDropdown = false;
+    this.searchSucursalText = '';
+  }
 
   commonRejections = [
     'Foto borrosa / no legible',
@@ -750,12 +870,16 @@ export class AdminRegistrosComponent implements OnInit {
     this.accion = 'aprobar';
     this.ticketImg.set(reg.FotoCajasUrl);
     this.folioDuplicado.set(false);
+    this.searchSucursalText = '';
+    this.showSucursalDropdown = false;
+    this.sucursalesCargadas.set([]);
     this.form = {
       folio: '',
       fecha: '',
       monto: '',
       cadena: '',
       producto: '',
+      sucursal: '',
       motivo: ''
     };
   }
@@ -794,6 +918,7 @@ export class AdminRegistrosComponent implements OnInit {
       if (this.form.monto === '') { alert('El Monto del Ticket es requerido'); return; }
       if (Number(this.form.monto) < 0) { alert('El Monto del Ticket no puede ser negativo'); return; }
       if (!this.form.cadena) { alert('La Cadena es requerida'); return; }
+      if (this.sucursalesCargadas().length > 0 && !this.form.sucursal) { alert('La Sucursal / Tienda es requerida'); return; }
       if (!this.form.producto) { alert('El Producto es requerido'); return; }
     } else {
       if (!this.form.motivo.trim()) { alert('Selecciona o escribe el motivo de rechazo'); return; }
@@ -807,7 +932,8 @@ export class AdminRegistrosComponent implements OnInit {
         FechaTicket: this.form.fecha,
         MontoTicket: this.form.monto,
         idCadena: this.form.cadena,
-        idProducto: this.form.producto
+        idProducto: this.form.producto,
+        idSucursal: this.form.sucursal || null
       };
       this.api.aprobarRegistro(reg.idRegistro, payload).subscribe({
         next: (res: any) => {

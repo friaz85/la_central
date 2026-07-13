@@ -71,6 +71,11 @@ export class ApiService {
     return this.http.get(`${this.apiBaseUrl}/api/cadenas.php`, { headers: this.getAuthHeaders() });
   }
 
+  getSucursales(idCadena?: number): Observable<any> {
+    const url = idCadena ? `${this.apiBaseUrl}/api/sucursales.php?idCadena=${idCadena}` : `${this.apiBaseUrl}/api/sucursales.php`;
+    return this.http.get(url, { headers: this.getAuthHeaders() });
+  }
+
   getProductos(): Observable<any> {
     return this.http.get(`${this.apiBaseUrl}/api/productos.php`, { headers: this.getAuthHeaders() });
   }

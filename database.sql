@@ -29,6 +29,16 @@ CREATE TABLE IF NOT EXISTS tblCadena (
     Activo TINYINT(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tblSucursal (
+    idSucursal INT AUTO_INCREMENT PRIMARY KEY,
+    idCadena INT NOT NULL,
+    NumeroTienda VARCHAR(50) NOT NULL,
+    Tienda VARCHAR(150) NOT NULL,
+    Activo TINYINT(1) DEFAULT 1,
+    FOREIGN KEY (idCadena) REFERENCES tblCadena(idCadena),
+    UNIQUE KEY uq_cadena_tienda (idCadena, NumeroTienda)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS tblProducto (
     idProducto INT AUTO_INCREMENT PRIMARY KEY,
     Producto VARCHAR(255) NOT NULL,
@@ -51,6 +61,7 @@ CREATE TABLE IF NOT EXISTS tblRegistro (
     MontoTicket DECIMAL(10, 2) DEFAULT NULL,
     idCadena INT DEFAULT NULL,
     idProducto INT DEFAULT NULL,
+    idSucursal INT DEFAULT NULL,
     TelefonoRecarga VARCHAR(15) DEFAULT NULL,
     idTelefonia INT DEFAULT NULL,
     FolioRecarga VARCHAR(50) DEFAULT NULL,
@@ -63,7 +74,8 @@ CREATE TABLE IF NOT EXISTS tblRegistro (
     FOREIGN KEY (idUsuario) REFERENCES tblUsuario(idUsuario),
     FOREIGN KEY (idTelefonia) REFERENCES tblTelefonia(idTelefonia),
     FOREIGN KEY (idCadena) REFERENCES tblCadena(idCadena),
-    FOREIGN KEY (idProducto) REFERENCES tblProducto(idProducto)
+    FOREIGN KEY (idProducto) REFERENCES tblProducto(idProducto),
+    FOREIGN KEY (idSucursal) REFERENCES tblSucursal(idSucursal)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS tblLogRecarga (

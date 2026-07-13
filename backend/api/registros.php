@@ -33,11 +33,13 @@ if ($method === 'GET') {
     // Listar todos los registros
     try {
         $query = "SELECT r.*, u.Celular, u.Nombre as NombreUsuario,
-                         c.Nombre AS NombreCadena, p.Producto AS NombreProducto
+                         c.Nombre AS NombreCadena, p.Producto AS NombreProducto,
+                         s.NumeroTienda AS SucursalNum, s.Tienda AS SucursalNombre
                   FROM tblRegistro r
                   JOIN tblUsuario u ON r.idUsuario = u.idUsuario
                   LEFT JOIN tblCadena c ON r.idCadena = c.idCadena
                   LEFT JOIN tblProducto p ON r.idProducto = p.idProducto
+                  LEFT JOIN tblSucursal s ON r.idSucursal = s.idSucursal
                   ORDER BY r.FechaRegistro DESC";
         $registros = DB::select($query);
         
@@ -95,6 +97,7 @@ elseif ($method === 'POST') {
             $montoTicket = isset($data['MontoTicket']) ? trim($data['MontoTicket']) : '';
             $idCadena    = !empty($data['idCadena']) ? (int)$data['idCadena'] : null;
             $idProducto  = !empty($data['idProducto']) ? (int)$data['idProducto'] : null;
+            $idSucursal  = !empty($data['idSucursal']) ? (int)$data['idSucursal'] : null;
 
             if (empty($folioTicket)) {
                 http_response_code(400);
@@ -132,11 +135,12 @@ elseif ($method === 'POST') {
                     MontoTicket = ?, 
                     idCadena = ?, 
                     idProducto = ?, 
+                    idSucursal = ?,
                     CodigoUnico = ?, 
                     Monto = ?, 
                     FechaValidacion = NOW() 
                  WHERE idRegistro = ?",
-                [$folioTicket, $fechaTicket, $montoTicket, $idCadena, $idProducto, $folioTicket, $montoTicket, $idRegistro]
+                [$folioTicket, $fechaTicket, $montoTicket, $idCadena, $idProducto, $idSucursal, $folioTicket, $montoTicket, $idRegistro]
             );
 
 
