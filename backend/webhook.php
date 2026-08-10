@@ -185,7 +185,7 @@ $wa = new YCloudService();
 if (defined('PROMO_FINALIZADA') && PROMO_FINALIZADA) {
     $mensaje = "🏆 *Promoción G15K de Gatorade®*\n\n"
              . "La promoción ha finalizado. 🏁\n\n"
-             . "Agradecemos mucho tu interés y participación. Por el momento ya no es posible registrar nuevos tickets ni realizar canjes.\n\n"
+             . "Agradecemos mucho tu interés y participación. Por el momento ya no es posible registrar nuevos tickets.\n\n"
              . "¡Gracias por tu preferencia! 🏆";
     $wa->sendText($celular, $mensaje);
     exit;
