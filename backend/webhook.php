@@ -79,6 +79,12 @@ $eventType = $data['type'] ?? '';
 
 if ($eventType === 'whatsapp.inbound_message.received' && isset($data['whatsappInboundMessage'])) {
     $msg = $data['whatsappInboundMessage'];
+    $toPhone  = ltrim($msg['to'] ?? '', '+');
+    $expectedPhone = ltrim(YCLOUD_FROM_PHONE ?? '', '+');
+    if ($toPhone !== $expectedPhone) {
+        error_log("G15k Webhook: Ignored message directed to {$toPhone} (expected {$expectedPhone})");
+        exit;
+    }
 
     $celular  = ltrim($msg['from'] ?? '', '+');   // quitar el + si lo trae
     $msgId    = $msg['id'] ?? '';
@@ -174,6 +180,16 @@ if (!empty($msgId)) {
 }
 
 $wa = new YCloudService();
+
+// Si la promoción ya finalizó, notificar al usuario y bloquear cualquier registro o canje
+if (defined('PROMO_FINALIZADA') && PROMO_FINALIZADA) {
+    $mensaje = "🏆 *Promoción G15K de Gatorade®*\n\n"
+             . "La promoción ha finalizado. 🏁\n\n"
+             . "Agradecemos mucho tu interés y participación. Por el momento ya no es posible registrar nuevos tickets ni realizar canjes.\n\n"
+             . "¡Gracias por tu preferencia! 🏆";
+    $wa->sendText($celular, $mensaje);
+    exit;
+}
 
 try {
     // Buscar o crear usuario

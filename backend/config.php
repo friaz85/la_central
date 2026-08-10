@@ -28,6 +28,7 @@ define('YCLOUD_WEBHOOK_ID',     '6a4ef4d67d1ef4403aca0041');
 // Taecel eliminado - esta plataforma no hace recargas telefónicas
 
 // Configuración de la App
+define('PROMO_FINALIZADA', true); // Promoción concluida -> Bloquea registros y canjes
 $host = $_SERVER['HTTP_HOST'] ?? 'g15k.qrewards.com.mx';
 $proto = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
 define('APP_URL', $proto . '://' . $host . '/backend');
