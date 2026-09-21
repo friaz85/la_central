@@ -308,10 +308,10 @@ try {
             DB::execute("UPDATE tblUsuario SET TempEmail = ?, PasoBot = 'INGRESO_ESTADO' WHERE idUsuario = ?", [$emailInput, $usuario['idUsuario']]);
             
             $body = "Por último, indícanos en donde resides:\n"
-                  . "Ciudad de México o Estado de México\n"
+                  . "Monterrey\n"
                   . "Otro estado";
             $buttons = [
-                ['id' => 'res_1', 'title' => 'CDMX / EDOMEX'],
+                ['id' => 'res_1', 'title' => 'Monterrey'],
                 ['id' => 'res_2', 'title' => 'Otro estado']
             ];
             $wa->sendButtons($celular, $body, $buttons);
@@ -325,12 +325,12 @@ try {
         if ($msgType === 'interactive') {
             $userResponse = $inbound['interactive']['button_reply']['id'] ?? '';
         } else {
-            if ($bodyText === '1' || strpos($bodyText, 'ciudad') !== false || strpos($bodyText, 'méxico') !== false || strpos($bodyText, 'mexico') !== false) $userResponse = 'res_1';
+            if ($bodyText === '1' || strpos($bodyText, 'monterrey') !== false || strpos($bodyText, 'mty') !== false) $userResponse = 'res_1';
             if ($bodyText === '2' || strpos($bodyText, 'otro') !== false || strpos($bodyText, 'estado') !== false) $userResponse = 'res_2';
         }
 
         if ($userResponse === 'res_1' || $userResponse === 'res_2') {
-            $estadoStr = ($userResponse === 'res_1') ? "Ciudad de México / Estado de México" : "Otro estado";
+            $estadoStr = ($userResponse === 'res_1') ? "Monterrey" : "Otro estado";
             DB::execute("UPDATE tblUsuario SET TempEstado = ?, PasoBot = 'CONFIRMACION_DATOS' WHERE idUsuario = ?", [$estadoStr, $usuario['idUsuario']]);
 
             // Obtener datos temporales para mostrar
@@ -350,10 +350,10 @@ try {
             $wa->sendButtons($celular, $body, $buttons);
         } else {
             $body = "Por favor, indícanos en donde resides utilizando los botones:\n"
-                  . "1️⃣ Ciudad de México o Estado de México\n"
+                  . "1️⃣ Monterrey\n"
                   . "2️⃣ Otro estado";
             $buttons = [
-                ['id' => 'res_1', 'title' => 'CDMX / EDOMEX'],
+                ['id' => 'res_1', 'title' => 'Monterrey'],
                 ['id' => 'res_2', 'title' => 'Otro estado']
             ];
             $wa->sendButtons($celular, $body, $buttons);
