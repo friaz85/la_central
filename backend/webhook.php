@@ -226,7 +226,7 @@ try {
         // Mensaje 1: Bienvenida (siempre se envía)
         $wa->sendText($celular,
             "🏆 ¡Bienvenido(a) a la promoción *G15K* de *Gatorade®*!\n\n"
-          . "Participa comprando *\$95.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
+          . "Participa comprando *\$68.00 MXN* o más en productos *Gatorade®* participantes y registra tu ticket para formar parte de esta promoción.\n\n"
           . "Para continuar, sigue las instrucciones que te compartiremos a continuación."
         );
         sleep(2);
