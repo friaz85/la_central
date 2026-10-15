@@ -183,10 +183,8 @@ $wa = new YCloudService();
 
 // Si la promoción ya finalizó, notificar al usuario y bloquear cualquier registro o canje
 if (defined('PROMO_FINALIZADA') && PROMO_FINALIZADA) {
-    $mensaje = "🏆 *Promoción G15K de Gatorade®*\n\n"
-             . "La promoción ha finalizado. 🏁\n\n"
-             . "Agradecemos mucho tu interés y participación. Por el momento ya no es posible registrar nuevos tickets.\n\n"
-             . "¡Gracias por tu preferencia! 🏆";
+    $mensaje = "🏆 ¡Bienvenido(a) a la promoción G15K de Gatorade®️!\n\n"
+             . "Te informamos que esta promoción ha finalizado.";
     $wa->sendText($celular, $mensaje);
     exit;
 }
